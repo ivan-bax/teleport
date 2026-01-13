@@ -35,6 +35,7 @@ import (
 
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/lib/auth/authtest"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/reversetunnel"
 	"github.com/gravitational/teleport/lib/service/servicecfg"
 	"github.com/gravitational/teleport/lib/services"
@@ -174,6 +175,7 @@ func TestDynamicWindowsDiscovery(t *testing.T) {
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: "test",
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -316,6 +318,7 @@ func TestDynamicWindowsDiscoveryExpiry(t *testing.T) {
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: "test",
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, authServer.Close()) })

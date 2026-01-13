@@ -55,6 +55,7 @@ import (
 	"github.com/gravitational/teleport/lib/join/joinclient/oracle"
 	"github.com/gravitational/teleport/lib/join/joinutils"
 	"github.com/gravitational/teleport/lib/join/oraclejoin"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils"
 	"github.com/gravitational/teleport/lib/utils/testutils"
@@ -104,7 +105,8 @@ func TestJoinOracle(t *testing.T) {
 
 	server, err := authtest.NewTestServer(authtest.ServerConfig{
 		Auth: authtest.AuthServerConfig{
-			Dir: t.TempDir(),
+			Dir:     t.TempDir(),
+			Modules: modulestest.OSSModules(),
 		},
 		TLS: &authtest.TLSServerConfig{
 			APIConfig: &auth.APIConfig{

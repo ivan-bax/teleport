@@ -38,6 +38,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/defaults"
 	"github.com/gravitational/teleport/lib/modules"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/srv/alpnproxy/common"
 	"github.com/gravitational/teleport/lib/utils"
 )
@@ -94,8 +95,9 @@ func TestVerifyALPNUpgradedConn(t *testing.T) {
 
 func newTestTLSServer(t testing.TB) *authtest.TLSServer {
 	as, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClockAt(time.Now().Round(time.Second).UTC()),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClockAt(time.Now().Round(time.Second).UTC()),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, as.Close()) })

@@ -64,6 +64,7 @@ import (
 	"github.com/gravitational/teleport/lib/kube/proxy/streamproto"
 	"github.com/gravitational/teleport/lib/limiter"
 	"github.com/gravitational/teleport/lib/modules"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/multiplexer"
 	"github.com/gravitational/teleport/lib/reversetunnel"
 	"github.com/gravitational/teleport/lib/reversetunnelclient"
@@ -136,13 +137,15 @@ func SetupTestContext(ctx context.Context, t *testing.T, cfg TestConfig) *TestCo
 	)
 	require.NoError(t, err)
 
+	clock := clockwork.NewFakeClockAt(time.Now())
 	// Create and start test auth server.
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Clock:         clockwork.NewFakeClockAt(time.Now()),
+		Clock:         clock,
 		ClusterName:   testCtx.ClusterName,
 		Streamer:      streamer,
 		UploadHandler: testCtx.UploadHandler,
 		Dir:           t.TempDir(),
+		Modules:       modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, authServer.Close()) })

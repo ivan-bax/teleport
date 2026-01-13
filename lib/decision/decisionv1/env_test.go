@@ -28,6 +28,7 @@ import (
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/lib/auth/authclient"
 	"github.com/gravitational/teleport/lib/auth/authtest"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 // Testenv is a test environment for decisionv1.Service.
@@ -47,7 +48,8 @@ func NewTestenv(t *testing.T) *Testenv {
 
 	testServer, err := authtest.NewTestServer(authtest.ServerConfig{
 		Auth: authtest.AuthServerConfig{
-			Dir: t.TempDir(),
+			Dir:     t.TempDir(),
+			Modules: modulestest.OSSModules(),
 			AuthPreferenceSpec: &types.AuthPreferenceSpecV2{
 				SecondFactor: constants.SecondFactorOTP, // Required.
 			},

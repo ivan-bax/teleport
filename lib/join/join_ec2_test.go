@@ -35,6 +35,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/state"
 	"github.com/gravitational/teleport/lib/join/ec2join"
 	"github.com/gravitational/teleport/lib/join/joinclient"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 type ec2Instance struct {
@@ -448,8 +449,9 @@ func TestJoinEC2(t *testing.T) {
 
 			testServer, err := authtest.NewTestServer(authtest.ServerConfig{
 				Auth: authtest.AuthServerConfig{
-					Dir:   t.TempDir(),
-					Clock: tc.clock,
+					Dir:     t.TempDir(),
+					Clock:   tc.clock,
+					Modules: modulestest.OSSModules(),
 				},
 			})
 			require.NoError(t, err)
@@ -527,8 +529,9 @@ func TestJoinEC2(t *testing.T) {
 func TestHostUniqueCheck(t *testing.T) {
 	testServer, err := authtest.NewTestServer(authtest.ServerConfig{
 		Auth: authtest.AuthServerConfig{
-			Dir:   t.TempDir(),
-			Clock: clockwork.NewFakeClockAt(instance1.pendingTime),
+			Dir:     t.TempDir(),
+			Modules: modulestest.OSSModules(),
+			Clock:   clockwork.NewFakeClockAt(instance1.pendingTime),
 		},
 	})
 	require.NoError(t, err)

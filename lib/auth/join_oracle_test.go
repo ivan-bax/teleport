@@ -36,6 +36,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/join/oracle"
 	"github.com/gravitational/teleport/lib/auth/testauthority"
 	"github.com/gravitational/teleport/lib/fixtures"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 func TestCheckHeaders(t *testing.T) {
@@ -148,7 +149,8 @@ func TestOracleTokenValidation(t *testing.T) {
 	t.Parallel()
 	server, err := authtest.NewTestServer(authtest.ServerConfig{
 		Auth: authtest.AuthServerConfig{
-			Dir: t.TempDir(),
+			Dir:     t.TempDir(),
+			Modules: modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

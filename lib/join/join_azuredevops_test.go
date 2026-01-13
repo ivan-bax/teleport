@@ -32,6 +32,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/state"
 	"github.com/gravitational/teleport/lib/join/azuredevops"
 	"github.com/gravitational/teleport/lib/join/joinclient"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 type mockAzureDevopsTokenValidator struct {
@@ -89,7 +90,8 @@ func TestJoinAzureDevops(t *testing.T) {
 	ctx := t.Context()
 	server, err := authtest.NewTestServer(authtest.ServerConfig{
 		Auth: authtest.AuthServerConfig{
-			Dir: t.TempDir(),
+			Dir:     t.TempDir(),
+			Modules: modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

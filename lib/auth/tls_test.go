@@ -77,7 +77,6 @@ import (
 	"github.com/gravitational/teleport/lib/itertools/stream"
 	"github.com/gravitational/teleport/lib/join/joinclient"
 	"github.com/gravitational/teleport/lib/jwt"
-	"github.com/gravitational/teleport/lib/modules"
 	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/sshca"
@@ -92,6 +91,7 @@ func TestRejectedClients(t *testing.T) {
 		Dir:         t.TempDir(),
 		ClusterName: "cluster",
 		Clock:       clockwork.NewFakeClock(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, server.Close()) })
@@ -159,6 +159,7 @@ func TestRemoteBuiltinRole(t *testing.T) {
 		Dir:         t.TempDir(),
 		ClusterName: "remote",
 		Clock:       testSrv.AuthServer.AuthServerConfig.Clock,
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, remoteServer.Close()) })
@@ -225,6 +226,7 @@ func TestAcceptedUsage(t *testing.T) {
 		ClusterName:   "remote",
 		AcceptedUsage: []string{"usage:k8s"},
 		Clock:         clockwork.NewFakeClock(),
+		Modules:       modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, server.Close()) })
@@ -289,6 +291,7 @@ func TestRemoteRotation(t *testing.T) {
 		Dir:         t.TempDir(),
 		ClusterName: "remote",
 		Clock:       testSrv.AuthServer.AuthServerConfig.Clock,
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, remoteServer.Close()) })
@@ -413,6 +416,7 @@ func TestLocalProxyPermissions(t *testing.T) {
 		Dir:         t.TempDir(),
 		ClusterName: "remote",
 		Clock:       testSrv.AuthServer.AuthServerConfig.Clock,
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, remoteServer.Close()) })
@@ -1285,6 +1289,7 @@ func TestRemoteUser(t *testing.T) {
 		Dir:         t.TempDir(),
 		ClusterName: "remote",
 		Clock:       clock,
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, remoteServer.Close()) })
@@ -1897,13 +1902,10 @@ func TestWebSessionWithoutAccessRequest(t *testing.T) {
 }
 
 func TestWebSessionMultiAccessRequests(t *testing.T) {
-	// Can not use t.Parallel() when changing modules
-	modulestest.SetTestModules(t, modulestest.Modules{TestBuildType: modules.BuildEnterprise})
+	t.Parallel()
+	ctx := t.Context()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
-	testSrv := newTestTLSServer(t)
+	testSrv := newTestTLSServer(t, withModules(modulestest.EnterpriseModules()))
 	clock := testSrv.AuthServer.AuthServerConfig.Clock
 
 	clt, err := testSrv.NewClient(authtest.TestAdmin())
@@ -5704,6 +5706,7 @@ type testTLSServerOptions struct {
 	cacheEnabled bool
 	accessGraph  *auth.AccessGraphConfig
 	clock        clockwork.Clock
+	modules      *modulestest.Modules
 }
 
 type testTLSServerOption func(*testTLSServerOptions)
@@ -5726,6 +5729,12 @@ func withClock(clock clockwork.Clock) testTLSServerOption {
 	}
 }
 
+func withModules(mod *modulestest.Modules) testTLSServerOption {
+	return func(options *testTLSServerOptions) {
+		options.modules = mod
+	}
+}
+
 // newTestTLSServer is a helper that returns a *authtest.TLSServer with sensible
 // defaults for most tests that are exercising Auth Service RPCs.
 //
@@ -5739,10 +5748,14 @@ func newTestTLSServer(t testing.TB, opts ...testTLSServerOption) *authtest.TLSSe
 	if options.clock == nil {
 		options.clock = clockwork.NewFakeClockAt(time.Now().Round(time.Second).UTC())
 	}
+	if options.modules == nil {
+		options.modules = modulestest.OSSModules()
+	}
 	as, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		Dir:          t.TempDir(),
 		Clock:        options.clock,
 		CacheEnabled: options.cacheEnabled,
+		Modules:      options.modules,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, as.Close()) })

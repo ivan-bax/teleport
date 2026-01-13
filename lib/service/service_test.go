@@ -388,7 +388,8 @@ func TestServiceCheckPrincipals(t *testing.T) {
 	// Create a test auth server to extract the server identity (SSH and TLS
 	// certificates).
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -1003,6 +1004,7 @@ func TestInstanceSelfRepair(t *testing.T) {
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		Dir:         makeTempDir(t),
 		ClusterName: clusterName,
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -1103,6 +1105,7 @@ func TestSSHPrincipals(t *testing.T) {
 		Auth: authtest.AuthServerConfig{
 			Dir:         t.TempDir(),
 			ClusterName: clusterName,
+			Modules:     modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)
@@ -1247,8 +1250,9 @@ func TestProxyGRPCServers(t *testing.T) {
 	// Create a test auth server to extract the server identity (SSH and TLS
 	// certificates).
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clock,
+		Dir:     t.TempDir(),
+		Clock:   clock,
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {

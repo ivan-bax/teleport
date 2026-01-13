@@ -48,6 +48,7 @@ import (
 	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/cloud/mocks"
 	"github.com/gravitational/teleport/lib/integrations/awsoidc"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/srv/discovery/common"
 	"github.com/gravitational/teleport/lib/srv/discovery/fetchers"
@@ -143,7 +144,8 @@ func TestDiscoveryKubeIntegrationEKS(t *testing.T) {
 
 	// Create and start test auth server.
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -360,7 +362,8 @@ func TestDiscoveryKubeIntegrationEKS(t *testing.T) {
 			ctx := context.Background()
 			// Create and start test auth server.
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-				Dir: t.TempDir(),
+				Dir:     t.TempDir(),
+				Modules: modulestest.OSSModules(),
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })

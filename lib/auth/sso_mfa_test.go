@@ -39,6 +39,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/mfatypes"
 	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/defaults"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 )
 
@@ -48,8 +49,9 @@ func TestSSOMFAChallenge_Creation(t *testing.T) {
 
 	fakeClock := clockwork.NewFakeClock()
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: fakeClock,
+		Dir:     t.TempDir(),
+		Clock:   fakeClock,
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -367,8 +369,9 @@ func TestSSOMFAChallenge_Validation(t *testing.T) {
 
 	fakeClock := clockwork.NewFakeClock()
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: fakeClock,
+		Dir:     t.TempDir(),
+		Clock:   fakeClock,
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })

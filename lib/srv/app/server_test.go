@@ -68,6 +68,7 @@ import (
 	libjwt "github.com/gravitational/teleport/lib/jwt"
 	"github.com/gravitational/teleport/lib/labels"
 	"github.com/gravitational/teleport/lib/modules"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/reversetunnel"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/session"
@@ -184,6 +185,7 @@ func SetUpSuiteWithConfig(t *testing.T, config suiteConfig) *Suite {
 	s.authServer, err = authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: "root.example.com",
 		Dir:         s.dataDir,
+		Modules:     modulestest.OSSModules(),
 		Clock:       s.clock,
 		Streamer:    config.ServerStreamer,
 	})

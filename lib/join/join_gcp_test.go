@@ -33,6 +33,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/testauthority"
 	"github.com/gravitational/teleport/lib/join/gcp"
 	"github.com/gravitational/teleport/lib/join/joinclient"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 type mockGCPTokenValidator struct {
@@ -71,7 +72,8 @@ func TestJoinGCP(t *testing.T) {
 
 	authServer, err := authtest.NewTestServer(authtest.ServerConfig{
 		Auth: authtest.AuthServerConfig{
-			Dir: t.TempDir(),
+			Dir:     t.TempDir(),
+			Modules: modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

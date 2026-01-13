@@ -45,6 +45,7 @@ import (
 	libevents "github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/events/eventstest"
 	"github.com/gravitational/teleport/lib/modules"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/service/servicecfg"
 	"github.com/gravitational/teleport/lib/srv/desktop/tdp"
 	"github.com/gravitational/teleport/lib/srv/desktop/tdp/protocol/legacy"
@@ -137,6 +138,7 @@ func TestGenerateCredentials(t *testing.T) {
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: clusterName,
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -460,6 +462,7 @@ func TestLoadTLSConfigForLDAP(t *testing.T) {
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: "test-cluster",
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -571,6 +574,7 @@ func TestCRLUpdateSchedule(t *testing.T) {
 		ClusterName: clusterName,
 		Clock:       clock,
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, testAuth.Close()) })

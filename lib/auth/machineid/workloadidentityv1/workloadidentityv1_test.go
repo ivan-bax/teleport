@@ -72,6 +72,7 @@ import (
 	"github.com/gravitational/teleport/lib/join/joinclient"
 	libjwt "github.com/gravitational/teleport/lib/jwt"
 	"github.com/gravitational/teleport/lib/modules"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/oidc/fakeissuer"
 	"github.com/gravitational/teleport/lib/service/servicecfg"
 	"github.com/gravitational/teleport/lib/services"
@@ -89,8 +90,9 @@ func TestMain(m *testing.M) {
 
 func newTestTLSServer(t testing.TB, opts ...authtest.TestTLSServerOption) (*authtest.TLSServer, *eventstest.MockRecorderEmitter) {
 	as, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClockAt(time.Now().Round(time.Second).UTC()),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClockAt(time.Now().Round(time.Second).UTC()),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, as.Close()) })

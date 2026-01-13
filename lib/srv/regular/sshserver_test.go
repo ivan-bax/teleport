@@ -71,6 +71,7 @@ import (
 	"github.com/gravitational/teleport/lib/events/eventstest"
 	"github.com/gravitational/teleport/lib/limiter"
 	"github.com/gravitational/teleport/lib/modules"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/observability/tracing"
 	libproxy "github.com/gravitational/teleport/lib/proxy"
 	"github.com/gravitational/teleport/lib/reversetunnel"
@@ -212,6 +213,7 @@ func newCustomFixture(t testing.TB, mutateCfg func(*authtest.ServerConfig), sshO
 			ClusterName: "localhost",
 			Dir:         t.TempDir(),
 			Clock:       clock,
+			Modules:     modulestest.OSSModules(),
 		},
 	}
 	mutateCfg(&serverCfg)
@@ -3033,6 +3035,7 @@ func TestEventMetadata(t *testing.T) {
 			ClusterName: "localhost",
 			Dir:         t.TempDir(),
 			Clock:       clockwork.NewFakeClock(),
+			Modules:     modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

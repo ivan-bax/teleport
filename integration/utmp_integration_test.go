@@ -46,6 +46,7 @@ import (
 	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/bpf"
 	"github.com/gravitational/teleport/lib/cryptosuites"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/reversetunnel"
 	"github.com/gravitational/teleport/lib/service/servicecfg"
 	"github.com/gravitational/teleport/lib/services"
@@ -242,6 +243,7 @@ func newSrvCtx(ctx context.Context, t *testing.T) *SrvCtx {
 			ClusterName: "localhost",
 			Dir:         tempdir,
 			Clock:       s.clock,
+			Modules:     modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

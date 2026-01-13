@@ -32,6 +32,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/testauthority"
 	"github.com/gravitational/teleport/lib/join/joinclient"
 	kubetoken "github.com/gravitational/teleport/lib/kube/token"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 type mockK8STokenReviewValidator struct {
@@ -67,7 +68,8 @@ func TestJoinKubernetes(t *testing.T) {
 
 	authServer, err := authtest.NewTestServer(authtest.ServerConfig{
 		Auth: authtest.AuthServerConfig{
-			Dir: t.TempDir(),
+			Dir:     t.TempDir(),
+			Modules: modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

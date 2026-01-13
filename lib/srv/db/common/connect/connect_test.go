@@ -35,6 +35,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/defaults"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/reversetunnelclient"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/tlsca"
@@ -85,6 +86,7 @@ func TestGetServerTLSConfig(t *testing.T) {
 	clusterName := "root"
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		Clock:       clockwork.NewFakeClockAt(time.Now()),
+		Modules:     modulestest.OSSModules(),
 		ClusterName: clusterName,
 		AuthPreferenceSpec: &types.AuthPreferenceSpecV2{
 			SignatureAlgorithmSuite: types.SignatureAlgorithmSuite_SIGNATURE_ALGORITHM_SUITE_BALANCED_V1,
@@ -145,6 +147,7 @@ func TestConnect(t *testing.T) {
 	clusterName := "root"
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		Clock:       clockwork.NewFakeClockAt(time.Now()),
+		Modules:     modulestest.OSSModules(),
 		ClusterName: clusterName,
 		AuthPreferenceSpec: &types.AuthPreferenceSpecV2{
 			SignatureAlgorithmSuite: types.SignatureAlgorithmSuite_SIGNATURE_ALGORITHM_SUITE_BALANCED_V1,

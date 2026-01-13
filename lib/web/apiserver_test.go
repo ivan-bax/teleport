@@ -271,6 +271,7 @@ func newWebSuiteWithConfig(t *testing.T, cfg webSuiteConfig) *WebSuite {
 			Clock:                   s.clock,
 			ClusterNetworkingConfig: networkingConfig,
 			AuthPreferenceSpec:      cfg.authPreferenceSpec,
+			Modules:                 modulestest.OSSModules(),
 		},
 	}
 
@@ -6037,6 +6038,13 @@ func TestWebSessionsRenewAllowsOldBearerTokenToLinger(t *testing.T) {
 // - Recovery codes are not returned for usernames that are not emails
 // - Recovery codes are returned for usernames that are valid emails
 func TestChangeUserAuthentication_recoveryCodesReturnedForCloud(t *testing.T) {
+	// Enable cloud feature.
+	modulestest.SetTestModules(t, modulestest.Modules{
+		TestFeatures: modules.Features{
+			RecoveryCodes: true,
+		},
+	})
+
 	env := newWebPack(t, 1)
 	ctx := context.Background()
 
@@ -6048,13 +6056,6 @@ func TestChangeUserAuthentication_recoveryCodesReturnedForCloud(t *testing.T) {
 	require.NoError(t, err)
 	_, err = env.server.Auth().UpsertAuthPreference(ctx, ap)
 	require.NoError(t, err)
-
-	// Enable cloud feature.
-	modulestest.SetTestModules(t, modulestest.Modules{
-		TestFeatures: modules.Features{
-			RecoveryCodes: true,
-		},
-	})
 
 	// Creaet a username that is not a valid email format for recovery.
 	teleUser, err := types.NewUser("invalid-name-for-recovery")
@@ -8417,6 +8418,7 @@ func newWebPack(t *testing.T, numProxies int, opts ...webPackOptions) *webPack {
 			Clock:        clock,
 			AuditLog:     events.NewDiscardAuditLog(),
 			CacheEnabled: options.enableAuthCache,
+			Modules:      modules.GetModules(),
 		},
 	})
 	require.NoError(t, err)

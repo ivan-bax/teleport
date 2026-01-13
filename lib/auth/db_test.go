@@ -35,6 +35,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/cryptosuites"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/tlsca"
 )
 
@@ -108,6 +109,7 @@ func TestDBCertSigning(t *testing.T) {
 		Clock:       clockwork.NewFakeClockAt(time.Now()),
 		ClusterName: "local.me",
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, authServer.Close()) })

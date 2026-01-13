@@ -38,6 +38,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/defaults"
 	"github.com/gravitational/teleport/lib/events"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils"
@@ -88,6 +89,7 @@ func TestCreateWebSession(t *testing.T) {
 			fakeClock := clockwork.NewFakeClock()
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 				Clock:                   fakeClock,
+				Modules:                 modulestest.OSSModules(),
 				Dir:                     t.TempDir(),
 				ClusterNetworkingConfig: clusterNetworkConfig,
 			})
@@ -119,7 +121,8 @@ func TestServer_CreateWebSessionFromReq_deviceWebToken(t *testing.T) {
 	t.Parallel()
 
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err, "NewAuthServer failed")
 	t.Cleanup(func() {
@@ -212,8 +215,9 @@ func TestCreateAppSession_DeviceTrust(t *testing.T) {
 	fakeClock := clockwork.NewFakeClock()
 
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Clock: fakeClock,
-		Dir:   t.TempDir(),
+		Clock:   fakeClock,
+		Modules: modulestest.OSSModules(),
+		Dir:     t.TempDir(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { testAuthServer.Close() })

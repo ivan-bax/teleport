@@ -40,6 +40,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/cryptosuites"
 	"github.com/gravitational/teleport/lib/defaults"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/srv/alpnproxy/common"
 	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils"
@@ -68,6 +69,7 @@ func NewSuite(t *testing.T) *Suite {
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: "root.example.com",
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 		Clock:       clockwork.NewFakeClockAt(time.Now()),
 	})
 	require.NoError(t, err)

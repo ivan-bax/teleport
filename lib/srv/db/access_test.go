@@ -2310,6 +2310,7 @@ func setupTestContext(ctx context.Context, t testing.TB, withDatabases ...withDa
 	// Create and start test auth server.
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		Clock:       testCtx.clock,
+		Modules:     modulestest.OSSModules(),
 		ClusterName: testCtx.clusterName,
 		AuthPreferenceSpec: &types.AuthPreferenceSpecV2{
 			SignatureAlgorithmSuite: types.SignatureAlgorithmSuite_SIGNATURE_ALGORITHM_SUITE_BALANCED_V1,

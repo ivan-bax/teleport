@@ -49,7 +49,8 @@ func TestOSSModules(t *testing.T) {
 func TestValidateAuthPreferenceOnCloud(t *testing.T) {
 	ctx := context.Background()
 	testServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testServer.Close()) })
@@ -100,7 +101,8 @@ func TestValidateSessionRecordingConfigOnCloud(t *testing.T) {
 	ctx := context.Background()
 
 	testServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testServer.Close()) })

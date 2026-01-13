@@ -35,6 +35,7 @@ import (
 	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/events/eventstest"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 const (
@@ -1019,6 +1020,7 @@ func setupAuthServer(t *testing.T, devices []*types.MFADevice) (*mockAuthServer,
 			AuditLog:    &eventstest.MockAuditLog{Emitter: emitter},
 			ClusterName: sourceCluster,
 			Dir:         t.TempDir(),
+			Modules:     modulestest.OSSModules(),
 			AuthPreferenceSpec: &types.AuthPreferenceSpecV2{
 				SecondFactors: []types.SecondFactorType{
 					types.SecondFactorType_SECOND_FACTOR_TYPE_WEBAUTHN,

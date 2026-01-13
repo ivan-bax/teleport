@@ -35,6 +35,7 @@ import (
 	"github.com/gravitational/teleport/lib/cloud/gcp/gcptest"
 	"github.com/gravitational/teleport/lib/cloud/mocks"
 	"github.com/gravitational/teleport/lib/defaults"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/srv/db/common"
 )
 
@@ -179,6 +180,7 @@ func makeAuthClient(t *testing.T) *authclient.Client {
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: "mysql-test",
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { authServer.Close() })

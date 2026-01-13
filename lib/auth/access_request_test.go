@@ -48,7 +48,6 @@ import (
 	"github.com/gravitational/teleport/lib/auth/authclient"
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/backend/memory"
-	"github.com/gravitational/teleport/lib/modules"
 	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/services/local"
@@ -69,7 +68,8 @@ type accessRequestTestPack struct {
 
 func newAccessRequestTestPack(ctx context.Context, t *testing.T) *accessRequestTestPack {
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.EnterpriseModules(),
 	})
 	require.NoError(t, err, "%s", trace.DebugReport(err))
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -191,9 +191,8 @@ func newAccessRequestTestPack(ctx context.Context, t *testing.T) *accessRequestT
 }
 
 func TestAccessRequest(t *testing.T) {
-	modulestest.SetTestModules(t, modulestest.Modules{TestBuildType: modules.BuildEnterprise})
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	t.Parallel()
+	ctx := t.Context()
 
 	testPack := newAccessRequestTestPack(ctx, t)
 	t.Run("single", func(t *testing.T) { testSingleAccessRequests(t, testPack) })
@@ -255,8 +254,9 @@ func TestAccessRequestResourceRBACLimits(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clock,
+		Dir:     t.TempDir(),
+		Clock:   clock,
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	defer authServer.Close()
@@ -373,8 +373,9 @@ func TestListAccessRequests(t *testing.T) {
 	clock := clockwork.NewFakeClock()
 
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clock,
+		Dir:     t.TempDir(),
+		Clock:   clock,
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	defer authServer.Close()
@@ -1415,7 +1416,8 @@ func TestCreateSuggestions(t *testing.T) {
 	t.Parallel()
 
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -1452,9 +1454,8 @@ func TestCreateSuggestions(t *testing.T) {
 }
 
 func TestPromotedRequest(t *testing.T) {
-	modulestest.SetTestModules(t, modulestest.Modules{TestBuildType: modules.BuildEnterprise})
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	t.Parallel()
+	ctx := t.Context()
 
 	testPack := newAccessRequestTestPack(ctx, t)
 
@@ -1552,9 +1553,8 @@ func TestPromotedRequest(t *testing.T) {
 }
 
 func TestUpdateAccessRequestWithAdditionalReviewers(t *testing.T) {
+	t.Parallel()
 	clock := clockwork.NewFakeClock()
-	testModules := modulestest.EnterpriseModules()
-	modulestest.SetTestModules(t, *testModules)
 
 	mustRequest := func(suggestedReviewers ...string) types.AccessRequest {
 		req, err := services.NewAccessRequest("test-user", "admins")
@@ -1743,7 +1743,7 @@ func TestUpdateAccessRequestWithAdditionalReviewers(t *testing.T) {
 
 			accessLists, err := local.NewAccessListServiceV2(local.AccessListServiceConfig{
 				Backend: mem,
-				Modules: testModules,
+				Modules: modulestest.EnterpriseModules(),
 			})
 			require.NoError(t, err)
 
@@ -1921,9 +1921,7 @@ type accessRequestWithStartTime struct {
 func createAccessRequestWithStartTime(t *testing.T) accessRequestWithStartTime {
 	t.Helper()
 
-	modulestest.SetTestModules(t, modulestest.Modules{TestBuildType: modules.BuildEnterprise})
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	ctx := t.Context()
 
 	testPack := newAccessRequestTestPack(ctx, t)
 

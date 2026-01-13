@@ -33,6 +33,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/authclient"
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/authz"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 )
 
 func newUserWithOrigin(t *testing.T, origin string) types.User {
@@ -74,7 +75,10 @@ func TestOktaMayNotResetPasswords(t *testing.T) {
 	ctx := context.Background()
 
 	// Given an auth server...
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { srv.Close() })
 
@@ -137,7 +141,10 @@ func TestOktaServiceLockCRUD(t *testing.T) {
 	ctx := context.Background()
 
 	// Given an auth server...
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { srv.Close() })
 

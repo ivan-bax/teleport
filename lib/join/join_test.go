@@ -50,6 +50,7 @@ import (
 	"github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/join/joinclient"
 	"github.com/gravitational/teleport/lib/join/joinv1"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/scopes/joining"
 	"github.com/gravitational/teleport/lib/srv/alpnproxy/common"
 	"github.com/gravitational/teleport/lib/utils"
@@ -517,6 +518,7 @@ func newFakeAuthService(t *testing.T) *fakeAuthService {
 		Auth: authtest.AuthServerConfig{
 			Dir:         t.TempDir(),
 			ClusterName: "testcluster",
+			Modules:     modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

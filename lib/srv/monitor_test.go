@@ -36,6 +36,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/events/eventstest"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils/log/logtest"
@@ -72,8 +73,9 @@ func TestConnectionMonitorLockInForce(t *testing.T) {
 	ctx := t.Context()
 
 	asrv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClock(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClock(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, asrv.Close()) })
@@ -163,8 +165,9 @@ func TestMonitorLockInForce(t *testing.T) {
 	ctx := t.Context()
 
 	asrv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClock(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClock(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, asrv.Close()) })
@@ -210,8 +213,9 @@ func TestMonitorStaleLocks(t *testing.T) {
 	ctx := t.Context()
 
 	asrv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClock(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClock(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, asrv.Close()) })
@@ -260,8 +264,9 @@ func TestMonitorStaleLocks(t *testing.T) {
 
 func TestWritesDisconnectMessage(t *testing.T) {
 	asrv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClock(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClock(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, asrv.Close()) })
@@ -314,8 +319,9 @@ func TestMonitorDisconnectExpiredCertBeforeTimeNow(t *testing.T) {
 	ctx := t.Context()
 
 	asrv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClock(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClock(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, asrv.Close()) })

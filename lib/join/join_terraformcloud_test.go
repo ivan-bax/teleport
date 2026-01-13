@@ -86,6 +86,7 @@ func TestJoinTerraformCloud(t *testing.T) {
 		Auth: authtest.AuthServerConfig{
 			ClusterName: "test.localhost",
 			Dir:         t.TempDir(),
+			Modules:     modulestest.OSSModules(),
 		},
 	})
 	require.NoError(t, err)

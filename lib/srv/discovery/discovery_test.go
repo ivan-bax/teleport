@@ -102,6 +102,7 @@ import (
 	libevents "github.com/gravitational/teleport/lib/events"
 	libstream "github.com/gravitational/teleport/lib/itertools/stream"
 	"github.com/gravitational/teleport/lib/modules"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 	"github.com/gravitational/teleport/lib/services/local"
 	"github.com/gravitational/teleport/lib/srv/discovery/common"
@@ -806,7 +807,8 @@ func TestDiscoveryServer(t *testing.T) {
 
 			// Create and start test auth server.
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-				Dir: t.TempDir(),
+				Dir:     t.TempDir(),
+				Modules: modulestest.OSSModules(),
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -1039,7 +1041,8 @@ func TestDiscoveryServerConcurrency(t *testing.T) {
 
 	// Create and start test auth server.
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -1248,7 +1251,8 @@ func TestDiscoveryKubeServices(t *testing.T) {
 			ctx := context.Background()
 			// Create and start test auth server.
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-				Dir: t.TempDir(),
+				Dir:     t.TempDir(),
+				Modules: modulestest.OSSModules(),
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -1622,7 +1626,8 @@ func TestDiscoveryInCloudKube(t *testing.T) {
 			ctx := context.Background()
 			// Create and start test auth server.
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-				Dir: t.TempDir(),
+				Dir:     t.TempDir(),
+				Modules: modulestest.OSSModules(),
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -2572,7 +2577,8 @@ func TestDiscoveryDatabase(t *testing.T) {
 
 			// Create and start test auth server.
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-				Dir: t.TempDir(),
+				Dir:     t.TempDir(),
+				Modules: modulestest.OSSModules(),
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -2767,7 +2773,8 @@ func TestDiscoveryDatabaseRemovingDiscoveryConfigs(t *testing.T) {
 
 	// Create and start test auth server.
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -3253,7 +3260,8 @@ func TestAzureVMDiscovery(t *testing.T) {
 			}
 
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-				Dir: t.TempDir(),
+				Dir:     t.TempDir(),
+				Modules: modulestest.OSSModules(),
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -3587,7 +3595,8 @@ func TestGCPVMDiscovery(t *testing.T) {
 
 			ctx := context.Background()
 			testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-				Dir: t.TempDir(),
+				Dir:     t.TempDir(),
+				Modules: modulestest.OSSModules(),
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })
@@ -3826,7 +3835,8 @@ func TestEmitUsageEvents(t *testing.T) {
 	t.Parallel()
 
 	testAuthServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir: t.TempDir(),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuthServer.Close()) })

@@ -769,7 +769,7 @@ func TestGithubAuthCompat(t *testing.T) {
 
 func TestAWSRolesAnywhereCredentialGenerationForApps(t *testing.T) {
 	ctx := t.Context()
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	// Set up a new Integration for AWS Roles Anywhere.
 	awsRAIntegration := "awsra-integration"
@@ -872,7 +872,7 @@ func TestAWSRolesAnywhereCredentialGenerationForApps(t *testing.T) {
 
 func TestAppAccessUsingAWSOIDC_doesntGenerateClientCredentials(t *testing.T) {
 	ctx := t.Context()
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	// Set up a user with the necessary roles to access the AWS App.
 	username := "aws-access-user"
@@ -1028,8 +1028,8 @@ func TestSSODiagnosticInfo(t *testing.T) {
 func TestGenerateUserCertsForHeadlessKube(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	srv := newTestTLSServer(t)
+	ctx := t.Context()
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	const kubeClusterName = "kube-cluster-1"
 	kubeCluster, err := types.NewKubernetesClusterV3(
@@ -1140,8 +1140,8 @@ func TestGenerateUserCertsWithMFAVerification(t *testing.T) {
 
 	const minVerificationDuration = 35 * time.Minute
 
-	ctx := context.Background()
-	srv := newTestTLSServer(t)
+	ctx := t.Context()
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	const kubeClusterName = "kube-cluster-1"
 	kubeCluster, err := types.NewKubernetesClusterV3(
@@ -1577,8 +1577,8 @@ func TestGenerateUserCertsWithRoleRequest(t *testing.T) {
 // impersonated client can reissue certificates but that role impersonation
 // cannot be escaped.
 func TestRolesRequestsExplicitAllowReissue(t *testing.T) {
-	ctx := context.Background()
-	srv := newTestTLSServer(t)
+	ctx := t.Context()
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	app, err := types.NewAppServerV3(types.Metadata{Name: "my-app"}, types.AppServerSpecV3{
 		HostID:   "my-app",
@@ -1901,7 +1901,10 @@ type testDynamicallyConfigurableRBACParams struct {
 // TestDynamicConfigurationRBACVerbs tests the dynamic configuration RBAC verbs described
 // in rfd/0016-dynamic-configuration.md § Implementation.
 func testDynamicallyConfigurableRBAC(t *testing.T, p testDynamicallyConfigurableRBACParams) {
-	testAuth, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	testAuth, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, testAuth.Close()) })
 
@@ -1995,8 +1998,13 @@ func TestAuthPreferenceRBAC(t *testing.T) {
 }
 
 func TestClusterNetworkingCloudUpdates(t *testing.T) {
-	srv := newTestTLSServer(t)
-	ctx := context.Background()
+	t.Parallel()
+	ctx := t.Context()
+
+	testModules := modulestest.EnterpriseModules()
+
+	srv := newTestTLSServer(t, withModules(testModules))
+
 	_, err := srv.Auth().UpsertClusterNetworkingConfig(ctx, types.DefaultClusterNetworkingConfig())
 	require.NoError(t, err)
 
@@ -2089,13 +2097,7 @@ func TestClusterNetworkingCloudUpdates(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			modulestest.SetTestModules(t, modulestest.Modules{
-				TestBuildType: modules.BuildEnterprise,
-				TestFeatures: modules.Features{
-					Cloud: tc.cloud,
-				},
-			})
-
+			testModules.TestFeatures.Cloud = tc.cloud
 			client, err := srv.NewClient(tc.identity)
 			require.NoError(t, err)
 
@@ -2640,8 +2642,9 @@ func TestStreamSessionEvents_SessionType(t *testing.T) {
 	t.Parallel()
 
 	authServerConfig := authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clockwork.NewFakeClockAt(time.Now().Round(time.Second).UTC()),
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+		Clock:   clockwork.NewFakeClockAt(time.Now().Round(time.Second).UTC()),
 	}
 	require.NoError(t, authServerConfig.CheckAndSetDefaults())
 
@@ -3015,8 +3018,8 @@ func mustGetDatabases(t *testing.T, client *authclient.Client, wantDatabases []t
 
 func TestKubernetesClusterCRUD_DiscoveryService(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	srv := newTestTLSServer(t)
+	ctx := t.Context()
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	discoveryClt, err := srv.NewClient(authtest.TestBuiltin(types.RoleDiscovery))
 	require.NoError(t, err)
@@ -3368,12 +3371,10 @@ func TestGetAndList_ApplicationServers(t *testing.T) {
 }
 
 func TestListSAMLIdPServiceProviderWithCache(t *testing.T) {
+	t.Parallel()
 	// Set license to enterprise in order to be able to list SAML IdP service providers.
-	modulestest.SetTestModules(t, modulestest.Modules{
-		TestBuildType: modules.BuildEnterprise,
-	})
-	ctx := context.Background()
-	srv := newTestTLSServer(t, withCacheEnabled(true))
+	ctx := t.Context()
+	srv := newTestTLSServer(t, withCacheEnabled(true), withModules(modulestest.EnterpriseModules()))
 
 	sp, err := types.NewSAMLIdPServiceProvider(types.Metadata{
 		Name: "saml-app",
@@ -3420,12 +3421,10 @@ func TestListSAMLIdPServiceProviderWithCache(t *testing.T) {
 // RBAC and search filters when fetching SAML IdP service providers.
 func TestListSAMLIdPServiceProviderAndListResources(t *testing.T) {
 	// Set license to enterprise in order to be able to list SAML IdP service providers.
-	modulestest.SetTestModules(t, modulestest.Modules{
-		TestBuildType: modules.BuildEnterprise,
-	})
+	t.Parallel()
 
-	ctx := context.Background()
-	srv := newTestTLSServer(t)
+	ctx := t.Context()
+	srv := newTestTLSServer(t, withModules(modulestest.EnterpriseModules()))
 
 	for i := range 5 {
 		name := fmt.Sprintf("saml-app-%v", i)
@@ -3726,7 +3725,10 @@ func TestApps(t *testing.T) {
 func TestReplaceRemoteLocksRBAC(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, srv.Close()) })
 
@@ -3995,7 +3997,10 @@ func TestIsMFARequired_databaseProtocols(t *testing.T) {
 func TestKindClusterConfig(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, srv.Close()) })
 
@@ -4043,8 +4048,8 @@ func TestKindClusterConfig(t *testing.T) {
 
 func TestGetAndList_KubernetesServers(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
-	srv := newTestTLSServer(t)
+	ctx := t.Context()
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	// Create test kube servers.
 	for range 5 {
@@ -4788,7 +4793,10 @@ func TestGetAndList_WindowsDesktops(t *testing.T) {
 func TestListResources_KindKubernetesCluster(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, srv.Close()) })
 
@@ -4898,7 +4906,10 @@ func createKubeServer(t *testing.T, s *auth.ServerWithRoles, clusterNames []stri
 func TestListResources_KindUserGroup(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, srv.Close()) })
 
@@ -5027,9 +5038,9 @@ func createUserGroup(t *testing.T, s *auth.Server, name string, labels map[strin
 }
 
 func TestDeleteUserAppSessions(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 	t.Cleanup(func() { srv.Close() })
 
 	// Generates a new user client.
@@ -5135,7 +5146,7 @@ func TestDeleteUserAppSessions(t *testing.T) {
 func TestListResources_SortAndDeduplicate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 
 	// Create user, role, and client.
 	username := "user"
@@ -7359,7 +7370,10 @@ func TestGenerateHostCertsScoped(t *testing.T) {
 // This is because only one uploader service runs per Teleport process, and it will use
 // the first available identity.
 func TestLocalServiceRolesHavePermissionsForUploaderService(t *testing.T) {
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err, trace.DebugReport(err))
 	t.Cleanup(func() { require.NoError(t, srv.Close()) })
 
@@ -8938,7 +8952,10 @@ func TestUpdateHeadlessAuthenticationState(t *testing.T) {
 func TestGenerateCertAuthorityCRL(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{Dir: t.TempDir()})
+	srv, err := authtest.NewAuthServer(authtest.AuthServerConfig{
+		Dir:     t.TempDir(),
+		Modules: modulestest.OSSModules(),
+	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, srv.Close()) })
 
@@ -8988,7 +9005,7 @@ func TestGenerateCertAuthorityCRL(t *testing.T) {
 
 func TestCreateSnowflakeSession(t *testing.T) {
 	t.Parallel()
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 	alice, bob, admin := createSessionTestUsers(t, srv.Auth())
 
 	tests := map[string]struct {
@@ -9015,8 +9032,7 @@ func TestCreateSnowflakeSession(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithCancel(context.Background())
-			t.Cleanup(cancel)
+			ctx := t.Context()
 			client, err := srv.NewClient(test.identity)
 			require.NoError(t, err)
 			_, err = client.CreateSnowflakeSession(ctx, types.CreateSnowflakeSessionRequest{
@@ -9031,7 +9047,9 @@ func TestCreateSnowflakeSession(t *testing.T) {
 
 func TestGetSnowflakeSession(t *testing.T) {
 	t.Parallel()
-	srv := newTestTLSServer(t)
+
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
+
 	alice, bob, admin := createSessionTestUsers(t, srv.Auth())
 	dbClient, err := srv.NewClient(authtest.TestBuiltin(types.RoleDatabase))
 	require.NoError(t, err)
@@ -9121,7 +9139,8 @@ func TestGetSnowflakeSessions(t *testing.T) {
 
 func TestListSnowflakeSessions(t *testing.T) {
 	t.Parallel()
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
+
 	alice, bob, admin := createSessionTestUsers(t, srv.Auth())
 
 	client, err := srv.NewClient(authtest.TestBuiltin(types.RoleDatabase))
@@ -9171,7 +9190,8 @@ func TestListSnowflakeSessions(t *testing.T) {
 
 func TestDeleteSnowflakeSession(t *testing.T) {
 	t.Parallel()
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
+
 	alice, bob, admin := createSessionTestUsers(t, srv.Auth())
 	tests := map[string]struct {
 		identity  authtest.TestIdentity
@@ -9200,8 +9220,7 @@ func TestDeleteSnowflakeSession(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithCancel(context.Background())
-			t.Cleanup(cancel)
+			ctx := t.Context()
 			sess, err := dbClient.CreateSnowflakeSession(ctx, types.CreateSnowflakeSessionRequest{
 				Username:     alice,
 				TokenTTL:     time.Minute * 15,
@@ -10290,7 +10309,7 @@ func collectWatchKind(kinds []types.WatchKind) []string {
 
 func TestKubeKeepAliveServer(t *testing.T) {
 	t.Parallel()
-	srv := newTestTLSServer(t)
+	srv := newTestTLSServer(t, withModules(modulestest.OSSModules()))
 	domainName, err := srv.Auth().GetDomainName()
 	require.NoError(t, err)
 
@@ -10454,6 +10473,7 @@ func TestIsMFARequired_AdminAction(t *testing.T) {
 }
 
 func TestCloudDefaultPasswordless(t *testing.T) {
+	t.Parallel()
 	tt := []struct {
 		name                     string
 		cloud                    bool
@@ -10501,15 +10521,16 @@ func TestCloudDefaultPasswordless(t *testing.T) {
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
 			// create new server
-			ctx := context.Background()
-			srv := newTestTLSServer(t)
-
-			modulestest.SetTestModules(t, modulestest.Modules{
+			ctx := t.Context()
+			t.Parallel()
+			testModules := &modulestest.Modules{
 				TestBuildType: modules.BuildEnterprise,
 				TestFeatures: modules.Features{
 					Cloud: tc.cloud,
 				},
-			})
+			}
+
+			srv := newTestTLSServer(t, withModules(testModules))
 
 			// set cluster Webauthn
 			authPreference, err := types.NewAuthPreference(types.AuthPreferenceSpecV2{
@@ -10525,7 +10546,7 @@ func TestCloudDefaultPasswordless(t *testing.T) {
 
 			// the test server doesn't create the preset users, so we call createPresetUsers manually
 			if tc.withPresetUsers {
-				auth.CreatePresetUsers(ctx, modules.BuildEnterprise, srv.Auth())
+				auth.CreatePresetUsers(ctx, testModules.BuildType(), srv.Auth())
 			}
 
 			// create preexisting users

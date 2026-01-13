@@ -44,6 +44,7 @@ import (
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/cryptosuites"
 	"github.com/gravitational/teleport/lib/fixtures"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/sshutils"
 	"github.com/gravitational/teleport/lib/tlsca"
 )
@@ -94,6 +95,7 @@ func TestExportAllAuthorities(t *testing.T) {
 	testAuth, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: localClusterName,
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err, "failed to create authtest.NewAuthServer")
 	t.Cleanup(func() { assert.NoError(t, testAuth.Close()) })
@@ -381,6 +383,7 @@ func TestExportAllAuthorities_additionalKeys(t *testing.T) {
 	testAuth, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: clusterName,
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, testAuth.Close()) })
@@ -684,6 +687,7 @@ func TestExportIntegrationAuthorities(t *testing.T) {
 	testAuth, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		ClusterName: "localcluster",
 		Dir:         t.TempDir(),
+		Modules:     modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { assert.NoError(t, testAuth.Close()) })

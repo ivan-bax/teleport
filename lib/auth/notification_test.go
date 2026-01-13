@@ -33,6 +33,7 @@ import (
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/lib/auth/authtest"
 	"github.com/gravitational/teleport/lib/events/eventstest"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/services"
 )
 
@@ -455,6 +456,7 @@ func mockAuth(t *testing.T) *authtest.TLSServer {
 	authServer, err := authtest.NewAuthServer(authtest.AuthServerConfig{
 		Dir:          t.TempDir(),
 		CacheEnabled: true,
+		Modules:      modulestest.OSSModules(),
 		AuditLog:     &eventstest.MockAuditLog{Emitter: new(eventstest.MockRecorderEmitter)},
 	})
 	require.NoError(t, err)

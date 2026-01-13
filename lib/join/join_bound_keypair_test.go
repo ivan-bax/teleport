@@ -45,6 +45,7 @@ import (
 	"github.com/gravitational/teleport/lib/boundkeypair"
 	"github.com/gravitational/teleport/lib/cryptosuites"
 	"github.com/gravitational/teleport/lib/join/joinclient"
+	"github.com/gravitational/teleport/lib/modules/modulestest"
 	"github.com/gravitational/teleport/lib/tlsca"
 )
 
@@ -69,8 +70,9 @@ func parseJoinState(t *testing.T, state []byte) *boundkeypair.JoinState {
 
 func newTestTLSServer(t *testing.T, clock clockwork.Clock) *authtest.TLSServer {
 	as, err := authtest.NewAuthServer(authtest.AuthServerConfig{
-		Dir:   t.TempDir(),
-		Clock: clock,
+		Dir:     t.TempDir(),
+		Clock:   clock,
+		Modules: modulestest.OSSModules(),
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, as.Close()) })

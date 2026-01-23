@@ -3023,6 +3023,10 @@ func (c *Client) LinuxDesktopClient() *linuxdesktop.Client {
 	return linuxdesktop.NewClient(linuxdesktopv1.NewLinuxDesktopServiceClient(c.conn))
 }
 
+func (c *Client) UpsertLinuxDesktop(ctx context.Context, desktop *linuxdesktopv1.LinuxDesktop) (*linuxdesktopv1.LinuxDesktop, error) {
+	return c.LinuxDesktopClient().UpsertLinuxDesktop(ctx, desktop)
+}
+
 // ClusterConfigClient returns an unadorned Cluster Configuration client, using the underlying
 // Auth gRPC connection.
 func (c *Client) ClusterConfigClient() clusterconfigpb.ClusterConfigServiceClient {

@@ -87,6 +87,9 @@ type Announcer interface {
 
 	// UpsertDatabaseService registers a DatabaseService.
 	UpsertDatabaseService(context.Context, types.DatabaseService) (*types.KeepAlive, error)
+
+	// UpsertLinuxDesktop registers a Linux desktop.
+	UpsertLinuxDesktop(context.Context, *linuxdesktopv1.LinuxDesktop) (*linuxdesktopv1.LinuxDesktop, error)
 }
 
 // accessPoint is an API interface implemented by a certificate authority (CA)
@@ -862,9 +865,6 @@ type ReadLinuxDesktopAccessPoint interface {
 
 	// GetRoles returns a list of roles
 	GetRoles(ctx context.Context) ([]types.Role, error)
-
-	// ListLinuxDesktops returns Linux desktop hosts.
-	ListLinuxDesktops(ctx context.Context, pageSize int, pageToken string) ([]*linuxdesktopv1.LinuxDesktop, string, error)
 }
 
 // LinuxDesktopAccessPoint is an API interface implemented by a certificate authority (CA) to be

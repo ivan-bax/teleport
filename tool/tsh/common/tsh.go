@@ -4880,6 +4880,11 @@ func loadClientConfigFromCLIConf(cf *CLIConf, proxy string) (*client.Config, err
 		if cf.Username == "" {
 			return nil, trace.BadParameter("user must be provided for headless login")
 		}
+
+		// It makes no sense to specify --all clusters when using headless mode
+		if cf.ListAll {
+			return nil, trace.BadParameter("--all cannot be specified with --headless/--auth=headless")
+		}
 	}
 
 	if err := tryLockMemory(cf); err != nil {

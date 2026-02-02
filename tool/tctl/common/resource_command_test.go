@@ -45,6 +45,7 @@ import (
 	"github.com/gravitational/teleport/api/gen/proto/go/teleport/autoupdate/v1"
 	headerv1 "github.com/gravitational/teleport/api/gen/proto/go/teleport/header/v1"
 	scopedaccessv1 "github.com/gravitational/teleport/api/gen/proto/go/teleport/scopes/access/v1"
+	joiningv1 "github.com/gravitational/teleport/api/gen/proto/go/teleport/scopes/joining/v1"
 	userprovisioningpb "github.com/gravitational/teleport/api/gen/proto/go/teleport/userprovisioning/v2"
 	"github.com/gravitational/teleport/api/types"
 	apicommon "github.com/gravitational/teleport/api/types/common"
@@ -526,6 +527,122 @@ version: v1
 		select {
 		case <-timeout:
 			require.FailNow(t, "Timed out waiting for scoped role cache propagation")
+		case <-time.After(time.Millisecond * 100):
+		}
+	}
+}
+
+func TestScopedToken(t *testing.T) {
+	const scopedTokenYAML = `kind: scoped_token
+version: v1
+metadata:
+  name: test-token
+scope: "/"
+spec:
+  roles:
+    - Node
+  assigned_scope: "/foo"
+  join_method: "token"
+  usage_mode: "unlimited"
+`
+
+	t.Setenv("TELEPORT_UNSTABLE_SCOPES", "yes")
+
+	dynAddr := helpers.NewDynamicServiceAddr(t)
+
+	fileConfig := &config.FileConfig{
+		Global: config.Global{
+			DataDir: t.TempDir(),
+		},
+		Proxy: config.Proxy{
+			Service: config.Service{
+				EnabledFlag: "true",
+			},
+			WebAddr: dynAddr.WebAddr,
+			TunAddr: dynAddr.TunnelAddr,
+		},
+		Auth: config.Auth{
+			Service: config.Service{
+				EnabledFlag:   "true",
+				ListenAddress: dynAddr.AuthAddr,
+			},
+		},
+	}
+
+	auth := makeAndRunTestAuthServer(t, withFileConfig(fileConfig), withFileDescriptors(dynAddr.Descriptors))
+	clt, err := testenv.NewDefaultAuthClient(auth)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = clt.Close() })
+
+	scopedTokenYAMLPath := filepath.Join(t.TempDir(), "test-token.yaml")
+	require.NoError(t, os.WriteFile(scopedTokenYAMLPath, []byte(scopedTokenYAML), 0644))
+
+	// Create the scoped token
+	_, err = runResourceCommand(t, clt, []string{"create", scopedTokenYAMLPath})
+	require.NoError(t, err)
+
+	// wait for cache propagation
+	timeout := time.After(time.Second * 30)
+	var raw []byte
+	for {
+		// Get the scoped token by name
+		buff, err := runResourceCommand(t, clt, []string{"get", "scoped_token/test-token", "--format=json"})
+		if err == nil {
+			raw = buff.Bytes()
+			break
+		}
+
+		require.True(t, trace.IsNotFound(err), "expected a NotFound error, got %v", err)
+
+		select {
+		case <-timeout:
+			require.FailNow(t, "Timed out waiting for scoped token cache propagation")
+		case <-time.After(time.Millisecond * 100):
+		}
+	}
+
+	tokens, err := services.UnmarshalProtoResourceArray[*joiningv1.ScopedToken](raw, services.DisallowUnknown())
+	require.NoError(t, err)
+	require.Len(t, tokens, 1)
+
+	// Compare with expected value
+	token := tokens[0]
+	require.Equal(t, types.KindScopedToken, token.GetKind())
+	require.Equal(t, "test-token", token.GetMetadata().GetName())
+	require.Equal(t, "/", token.GetScope())
+	require.Equal(t, []string{"Node"}, token.GetSpec().GetRoles())
+	require.Equal(t, "/foo", token.GetSpec().GetAssignedScope())
+	require.Equal(t, "token", token.GetSpec().GetJoinMethod())
+	require.Equal(t, "unlimited", token.GetSpec().GetUsageMode())
+	// Secret should be populated
+	require.NotEmpty(t, token.GetStatus().GetSecret())
+
+	// Get all scoped tokens
+	buff, err := runResourceCommand(t, clt, []string{"get", "scoped_token", "--format=json"})
+	require.NoError(t, err)
+	var allTokens []*joiningv1.ScopedToken
+	err = json.Unmarshal(buff.Bytes(), &allTokens)
+	require.NoError(t, err)
+	require.Len(t, allTokens, 1)
+	require.Equal(t, "test-token", allTokens[0].GetMetadata().GetName())
+
+	// verify delete of token
+	_, err = runResourceCommand(t, clt, []string{"rm", "scoped_token/test-token"})
+	require.NoError(t, err)
+
+	// wait for delete cache propagation
+	timeout = time.After(time.Second * 30)
+	for {
+		// verify token is gone
+		_, err = runResourceCommand(t, clt, []string{"get", "scoped_token/test-token", "--format=json"})
+		if err != nil {
+			require.True(t, trace.IsNotFound(err), "expected a NotFound error, got %v", err)
+			break
+		}
+
+		select {
+		case <-timeout:
+			require.FailNow(t, "Timed out waiting for scoped token delete cache propagation")
 		case <-time.After(time.Millisecond * 100):
 		}
 	}

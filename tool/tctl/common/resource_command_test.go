@@ -615,7 +615,7 @@ spec:
 	require.Equal(t, "token", token.GetSpec().GetJoinMethod())
 	require.Equal(t, "unlimited", token.GetSpec().GetUsageMode())
 	// Secret should be populated
-	require.Equal(t, token.GetStatus().GetSecret(), "******")
+	require.Equal(t, "******", token.GetStatus().GetSecret())
 
 	// Get all scoped tokens
 	buff, err := runResourceCommand(t, clt, []string{"get", "scoped_token", "--format=json", "--with-secrets"})

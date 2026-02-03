@@ -615,16 +615,19 @@ spec:
 	require.Equal(t, "token", token.GetSpec().GetJoinMethod())
 	require.Equal(t, "unlimited", token.GetSpec().GetUsageMode())
 	// Secret should be populated
-	require.NotEmpty(t, token.GetStatus().GetSecret())
+	require.Equal(t, token.GetStatus().GetSecret(), "******")
 
 	// Get all scoped tokens
-	buff, err := runResourceCommand(t, clt, []string{"get", "scoped_token", "--format=json"})
+	buff, err := runResourceCommand(t, clt, []string{"get", "scoped_token", "--format=json", "--with-secrets"})
 	require.NoError(t, err)
 	var allTokens []*joiningv1.ScopedToken
 	err = json.Unmarshal(buff.Bytes(), &allTokens)
 	require.NoError(t, err)
 	require.Len(t, allTokens, 1)
 	require.Equal(t, "test-token", allTokens[0].GetMetadata().GetName())
+	// Secret should be populated
+	require.NotEmpty(t, allTokens[0].GetStatus().GetSecret())
+	require.NotContains(t, allTokens[0].GetStatus().GetSecret(), "******")
 
 	// verify delete of token
 	_, err = runResourceCommand(t, clt, []string{"rm", "scoped_token/test-token"})

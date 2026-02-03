@@ -26,7 +26,6 @@ import (
 	"io"
 	"os"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
@@ -39,7 +38,6 @@ import (
 	joiningv1 "github.com/gravitational/teleport/api/gen/proto/go/teleport/scopes/joining/v1"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/utils/clientutils"
-	"github.com/gravitational/teleport/lib/asciitable"
 	"github.com/gravitational/teleport/lib/auth/authclient"
 	"github.com/gravitational/teleport/lib/defaults"
 	"github.com/gravitational/teleport/lib/itertools/stream"
@@ -47,6 +45,7 @@ import (
 	"github.com/gravitational/teleport/lib/service/servicecfg"
 	"github.com/gravitational/teleport/lib/utils"
 	commonclient "github.com/gravitational/teleport/tool/tctl/common/client"
+	"github.com/gravitational/teleport/tool/tctl/common/resources"
 )
 
 // ScopedTokensCommand implements `tctl scoped tokens` group of commands
@@ -297,22 +296,7 @@ func (c *ScopedTokensCommand) List(ctx context.Context, client *authclient.Clien
 			fmt.Fprintln(c.Stdout, token.GetMetadata().GetName())
 		}
 	default:
-		tokensView := func() string {
-			table := asciitable.MakeTable([]string{"Token", "Secret", "Type", "Scope", "Assigns Scope", "Labels", "Expiry Time (UTC)"})
-			now := time.Now()
-			for _, t := range tokens {
-				expiry := "never"
-				expiresAt := t.GetMetadata().GetExpires().AsTime()
-				if !expiresAt.IsZero() && expiresAt.Unix() != 0 {
-					exptime := expiresAt.Format(time.RFC822)
-					expdur := expiresAt.Sub(now).Round(time.Second)
-					expiry = fmt.Sprintf("%s (%s)", exptime, expdur.String())
-				}
-				table.AddRow([]string{t.GetMetadata().GetName(), secretFunc(t), strings.Join(t.GetSpec().GetRoles(), ","), t.GetScope(), t.GetSpec().GetAssignedScope(), printMetadataLabels(t.GetMetadata().Labels), expiry})
-			}
-			return table.AsBuffer().String()
-		}
-		fmt.Fprint(c.Stdout, tokensView())
+		fmt.Fprint(c.Stdout, resources.ScopedTokenTextHelper(tokens, secretFunc).String())
 	}
 	return nil
 }

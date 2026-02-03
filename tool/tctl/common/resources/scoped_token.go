@@ -16,10 +16,12 @@
 package resources
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gravitational/trace"
 
@@ -51,20 +53,7 @@ func (c *scopedTokenCollection) Resources() []types.Resource {
 }
 
 func (c *scopedTokenCollection) WriteText(w io.Writer, verbose bool) error {
-	headers := []string{"Scope", "Name", "Type", "Assigns Scope"}
-	rows := make([][]string, len(c.tokens))
-	for i, item := range c.tokens {
-		rows[i] = []string{
-			item.GetScope(),
-			item.GetMetadata().GetName(),
-			strings.Join(item.GetSpec().GetRoles(), ","),
-			item.GetSpec().GetAssignedScope(),
-		}
-	}
-
-	t := asciitable.MakeTable(headers, rows...)
-
-	_, err := t.AsBuffer().WriteTo(w)
+	_, err := ScopedTokenTextHelper(c.tokens, nil).WriteTo(w)
 	return trace.Wrap(err)
 }
 
@@ -108,6 +97,9 @@ func getScopedToken(ctx context.Context, client *authclient.Client, ref services
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}
+		if !opts.WithSecrets {
+			token.GetStatus().Secret = "******"
+		}
 		return &scopedTokenCollection{[]*joiningv1.ScopedToken{token}}, nil
 	}
 
@@ -118,6 +110,11 @@ func getScopedToken(ctx context.Context, client *authclient.Client, ref services
 		})
 		if err != nil {
 			return nil, "", trace.Wrap(err)
+		}
+		if !opts.WithSecrets {
+			for _, token := range res.GetTokens() {
+				token.GetStatus().Secret = "******"
+			}
 		}
 
 		return res.GetTokens(), res.GetCursor(), nil
@@ -139,4 +136,26 @@ func deleteScopedToken(ctx context.Context, client *authclient.Client, ref servi
 		ref.Name,
 	)
 	return nil
+}
+
+func ScopedTokenTextHelper(tokens []*joiningv1.ScopedToken, secretFunc func(token *joiningv1.ScopedToken) string) *bytes.Buffer {
+	table := asciitable.MakeTable([]string{"Token", "Secret", "Type", "Scope", "Assigns Scope", "Labels", "Expiry Time (UTC)"})
+	if secretFunc == nil {
+		secretFunc = func(t *joiningv1.ScopedToken) string {
+			return t.GetStatus().GetSecret()
+		}
+	}
+
+	now := time.Now()
+	for _, t := range tokens {
+		expiry := "never"
+		expiresAt := t.GetMetadata().GetExpires().AsTime()
+		if !expiresAt.IsZero() && expiresAt.Unix() != 0 {
+			exptime := expiresAt.Format(time.RFC822)
+			expdur := expiresAt.Sub(now).Round(time.Second)
+			expiry = fmt.Sprintf("%s (%s)", exptime, expdur.String())
+		}
+		table.AddRow([]string{t.GetMetadata().GetName(), secretFunc(t), strings.Join(t.GetSpec().GetRoles(), ","), t.GetScope(), t.GetSpec().GetAssignedScope(), PrintMetadataLabels(t.GetMetadata().Labels), expiry})
+	}
+	return table.AsBuffer()
 }

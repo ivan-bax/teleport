@@ -49,14 +49,6 @@ import (
 	"github.com/gravitational/teleport/tool/tctl/common/resources"
 )
 
-func printMetadataLabels(labels map[string]string) string {
-	pairs := []string{}
-	for key, value := range labels {
-		pairs = append(pairs, fmt.Sprintf("%v=%v", key, value))
-	}
-	return strings.Join(pairs, ",")
-}
-
 type reverseTunnelCollection struct {
 	tunnels []types.ReverseTunnel
 }

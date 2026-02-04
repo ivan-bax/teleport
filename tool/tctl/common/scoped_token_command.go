@@ -274,12 +274,6 @@ func (c *ScopedTokensCommand) List(ctx context.Context, client *authclient.Clien
 		return left.GetMetadata().GetExpires().AsTime().Compare(right.GetMetadata().GetExpires().AsTime())
 	})
 
-	secretFunc := func(tok *joiningv1.ScopedToken) string {
-		if c.withSecrets {
-			return tok.GetStatus().GetSecret()
-		}
-		return "******"
-	}
 	switch c.format {
 	case teleport.JSON:
 		err := utils.WriteJSONArray(c.Stdout, tokens)
@@ -296,7 +290,7 @@ func (c *ScopedTokensCommand) List(ctx context.Context, client *authclient.Clien
 			fmt.Fprintln(c.Stdout, token.GetMetadata().GetName())
 		}
 	default:
-		fmt.Fprint(c.Stdout, resources.ScopedTokenTextHelper(tokens, secretFunc).String())
+		fmt.Fprint(c.Stdout, resources.ScopedTokenTextHelper(tokens, c.withSecrets).String())
 	}
 	return nil
 }

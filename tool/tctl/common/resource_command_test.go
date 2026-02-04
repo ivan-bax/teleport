@@ -582,24 +582,18 @@ spec:
 	require.NoError(t, err)
 
 	// wait for cache propagation
-	timeout := time.After(time.Second * 30)
 	var raw []byte
-	for {
+	require.Eventually(t, func() bool {
 		// Get the scoped token by name
 		buff, err := runResourceCommand(t, clt, []string{"get", "scoped_token/test-token", "--format=json"})
 		if err == nil {
 			raw = buff.Bytes()
-			break
+			return true
 		}
 
 		require.True(t, trace.IsNotFound(err), "expected a NotFound error, got %v", err)
-
-		select {
-		case <-timeout:
-			require.FailNow(t, "Timed out waiting for scoped token cache propagation")
-		case <-time.After(time.Millisecond * 100):
-		}
-	}
+		return false
+	}, time.Second*30, time.Millisecond*100, "Timed out waiting for scoped token cache propagation")
 
 	tokens, err := services.UnmarshalProtoResourceArray[*joiningv1.ScopedToken](raw, services.DisallowUnknown())
 	require.NoError(t, err)
@@ -634,21 +628,15 @@ spec:
 	require.NoError(t, err)
 
 	// wait for delete cache propagation
-	timeout = time.After(time.Second * 30)
-	for {
-		// verify token is gone
+	require.Eventually(t, func() bool {
 		_, err = runResourceCommand(t, clt, []string{"get", "scoped_token/test-token", "--format=json"})
 		if err != nil {
 			require.True(t, trace.IsNotFound(err), "expected a NotFound error, got %v", err)
-			break
+			return true
 		}
 
-		select {
-		case <-timeout:
-			require.FailNow(t, "Timed out waiting for scoped token delete cache propagation")
-		case <-time.After(time.Millisecond * 100):
-		}
-	}
+		return false
+	}, time.Second*30, time.Millisecond*100, "Timed out waiting for scoped token cache propagation")
 }
 
 // TestIntegrationResource tests tctl integration commands.

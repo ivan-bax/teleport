@@ -53,7 +53,9 @@ func (c *scopedTokenCollection) Resources() []types.Resource {
 }
 
 func (c *scopedTokenCollection) WriteText(w io.Writer, verbose bool) error {
-	_, err := ScopedTokenTextHelper(c.tokens, nil).WriteTo(w)
+	// when calling the getScopedToken command with --with-secrets, the secrets would have already been obfuscated
+	// in the getScopedToken function. So we don't need to specify withSecrets here.
+	_, err := ScopedTokenTextHelper(c.tokens, false).WriteTo(w)
 	return trace.Wrap(err)
 }
 
@@ -138,12 +140,14 @@ func deleteScopedToken(ctx context.Context, client *authclient.Client, ref servi
 	return nil
 }
 
-func ScopedTokenTextHelper(tokens []*joiningv1.ScopedToken, secretFunc func(token *joiningv1.ScopedToken) string) *bytes.Buffer {
+func ScopedTokenTextHelper(tokens []*joiningv1.ScopedToken, withSecrets bool) *bytes.Buffer {
 	table := asciitable.MakeTable([]string{"Token", "Secret", "Type", "Scope", "Assigns Scope", "Labels", "Expiry Time (UTC)"})
-	if secretFunc == nil {
-		secretFunc = func(t *joiningv1.ScopedToken) string {
+
+	secretFunc := func(t *joiningv1.ScopedToken) string {
+		if withSecrets {
 			return t.GetStatus().GetSecret()
 		}
+		return "******"
 	}
 
 	now := time.Now()

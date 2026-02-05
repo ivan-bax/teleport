@@ -3166,6 +3166,28 @@ func TestSSHHeadlessCLIFlags(t *testing.T) {
 			assertErr: func(t require.TestingT, err error, msgAndArgs ...any) {
 				require.True(t, trace.IsBadParameter(err), "expected trace.BadParameter error but got %v", err)
 			},
+		}, {
+			name: "NOK --headless with --all",
+			cliConf: CLIConf{
+				Proxy:    proxy,
+				Headless: true,
+				ListAll:  true,
+				Username: username,
+			},
+			assertErr: func(t require.TestingT, err error, msgAndArgs ...any) {
+				require.True(t, trace.IsBadParameter(err), "expected trace.BadParameter error but got %v", err)
+			},
+		}, {
+			name: "NOK --auth=headless with --all",
+			cliConf: CLIConf{
+				Proxy:         proxy,
+				AuthConnector: constants.HeadlessConnector,
+				ListAll:       true,
+				Username:      username,
+			},
+			assertErr: func(t require.TestingT, err error, msgAndArgs ...any) {
+				require.True(t, trace.IsBadParameter(err), "expected trace.BadParameter error but got %v", err)
+			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

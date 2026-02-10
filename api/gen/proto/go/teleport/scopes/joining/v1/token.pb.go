@@ -152,7 +152,9 @@ type ScopedTokenSpec struct {
 	// Supported joining methods for scoped tokens only include 'token'.
 	JoinMethod string `protobuf:"bytes,3,opt,name=join_method,json=joinMethod,proto3" json:"join_method,omitempty"`
 	// The AWS-specific configuration used with the "ec2" and "iam" join methods.
-	Aws           *AWS `protobuf:"bytes,6,opt,name=aws,proto3" json:"aws,omitempty"`
+	Aws *AWS `protobuf:"bytes,6,opt,name=aws,proto3" json:"aws,omitempty"`
+	// The GCP-specific configuration used with the "gcp" join method.
+	Gcp           *GCP `protobuf:"bytes,7,opt,name=gcp,proto3" json:"gcp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -211,6 +213,13 @@ func (x *ScopedTokenSpec) GetJoinMethod() string {
 func (x *ScopedTokenSpec) GetAws() *AWS {
 	if x != nil {
 		return x.Aws
+	}
+	return nil
+}
+
+func (x *ScopedTokenSpec) GetGcp() *GCP {
+	if x != nil {
+		return x.Gcp
 	}
 	return nil
 }
@@ -329,6 +338,53 @@ func (x *AWS) GetIntegration() string {
 	return ""
 }
 
+// The GCP-specific configuration used with the "gcp" join method.
+type GCP struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A list of Rules for allowing use of this token. A node must match at least one
+	// allow rule in order to use this token.
+	Allow         []*GCP_Rule `protobuf:"bytes,1,rep,name=allow,proto3" json:"allow,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GCP) Reset() {
+	*x = GCP{}
+	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GCP) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GCP) ProtoMessage() {}
+
+func (x *GCP) ProtoReflect() protoreflect.Message {
+	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GCP.ProtoReflect.Descriptor instead.
+func (*GCP) Descriptor() ([]byte, []int) {
+	return file_teleport_scopes_joining_v1_token_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GCP) GetAllow() []*GCP_Rule {
+	if x != nil {
+		return x.Allow
+	}
+	return nil
+}
+
 // A rule that a joining node must match in order to use the associated token
 // with AWS join methods.
 type AWS_Rule struct {
@@ -353,7 +409,7 @@ type AWS_Rule struct {
 
 func (x *AWS_Rule) Reset() {
 	*x = AWS_Rule{}
-	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[4]
+	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -365,7 +421,7 @@ func (x *AWS_Rule) String() string {
 func (*AWS_Rule) ProtoMessage() {}
 
 func (x *AWS_Rule) ProtoReflect() protoreflect.Message {
-	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[4]
+	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,6 +472,71 @@ func (x *AWS_Rule) GetAwsOrganizationId() string {
 	return ""
 }
 
+// A rule that a joining node must match in order to use the associated token
+// with the "gcp" join method.
+type GCP_Rule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A list of project IDs (e.g. `<example-id-123456>`).
+	ProjectIds []string `protobuf:"bytes,1,rep,name=project_ids,json=projectIds,proto3" json:"project_ids,omitempty"`
+	// A list of regions (e.g. "us-west1") and/or zones (e.g. "us-west1-b").
+	Locations []string `protobuf:"bytes,2,rep,name=locations,proto3" json:"locations,omitempty"`
+	// A list of service account emails (e.g. `<project-number>-compute@developer.gserviceaccount.com`).
+	ServiceAccounts []string `protobuf:"bytes,3,rep,name=service_accounts,json=serviceAccounts,proto3" json:"service_accounts,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GCP_Rule) Reset() {
+	*x = GCP_Rule{}
+	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GCP_Rule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GCP_Rule) ProtoMessage() {}
+
+func (x *GCP_Rule) ProtoReflect() protoreflect.Message {
+	mi := &file_teleport_scopes_joining_v1_token_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GCP_Rule.ProtoReflect.Descriptor instead.
+func (*GCP_Rule) Descriptor() ([]byte, []int) {
+	return file_teleport_scopes_joining_v1_token_proto_rawDescGZIP(), []int{4, 0}
+}
+
+func (x *GCP_Rule) GetProjectIds() []string {
+	if x != nil {
+		return x.ProjectIds
+	}
+	return nil
+}
+
+func (x *GCP_Rule) GetLocations() []string {
+	if x != nil {
+		return x.Locations
+	}
+	return nil
+}
+
+func (x *GCP_Rule) GetServiceAccounts() []string {
+	if x != nil {
+		return x.ServiceAccounts
+	}
+	return nil
+}
+
 var File_teleport_scopes_joining_v1_token_proto protoreflect.FileDescriptor
 
 const file_teleport_scopes_joining_v1_token_proto_rawDesc = "" +
@@ -428,13 +549,14 @@ const file_teleport_scopes_joining_v1_token_proto_rawDesc = "" +
 	"\bmetadata\x18\x04 \x01(\v2\x1c.teleport.header.v1.MetadataR\bmetadata\x12\x14\n" +
 	"\x05scope\x18\x05 \x01(\tR\x05scope\x12?\n" +
 	"\x04spec\x18\x06 \x01(\v2+.teleport.scopes.joining.v1.ScopedTokenSpecR\x04spec\x12E\n" +
-	"\x06status\x18\a \x01(\v2-.teleport.scopes.joining.v1.ScopedTokenStatusR\x06status\"\xa2\x01\n" +
+	"\x06status\x18\a \x01(\v2-.teleport.scopes.joining.v1.ScopedTokenStatusR\x06status\"\xd5\x01\n" +
 	"\x0fScopedTokenSpec\x12%\n" +
 	"\x0eassigned_scope\x18\x01 \x01(\tR\rassignedScope\x12\x14\n" +
 	"\x05roles\x18\x02 \x03(\tR\x05roles\x12\x1f\n" +
 	"\vjoin_method\x18\x03 \x01(\tR\n" +
 	"joinMethod\x121\n" +
-	"\x03aws\x18\x06 \x01(\v2\x1f.teleport.scopes.joining.v1.AWSR\x03aws\"+\n" +
+	"\x03aws\x18\x06 \x01(\v2\x1f.teleport.scopes.joining.v1.AWSR\x03aws\x121\n" +
+	"\x03gcp\x18\a \x01(\v2\x1f.teleport.scopes.joining.v1.GCPR\x03gcp\"+\n" +
 	"\x11ScopedTokenStatus\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\tR\x06secret\"\xb2\x02\n" +
 	"\x03AWS\x12:\n" +
@@ -448,7 +570,14 @@ const file_teleport_scopes_joining_v1_token_proto_rawDesc = "" +
 	"awsRegions\x12\x19\n" +
 	"\baws_role\x18\x03 \x01(\tR\aawsRole\x12\x17\n" +
 	"\aaws_arn\x18\x04 \x01(\tR\x06awsArn\x12.\n" +
-	"\x13aws_organization_id\x18\x05 \x01(\tR\x11awsOrganizationIdBYZWgithub.com/gravitational/teleport/api/gen/proto/go/teleport/scopes/joining/v1;joiningv1b\x06proto3"
+	"\x13aws_organization_id\x18\x05 \x01(\tR\x11awsOrganizationId\"\xb3\x01\n" +
+	"\x03GCP\x12:\n" +
+	"\x05allow\x18\x01 \x03(\v2$.teleport.scopes.joining.v1.GCP.RuleR\x05allow\x1ap\n" +
+	"\x04Rule\x12\x1f\n" +
+	"\vproject_ids\x18\x01 \x03(\tR\n" +
+	"projectIds\x12\x1c\n" +
+	"\tlocations\x18\x02 \x03(\tR\tlocations\x12)\n" +
+	"\x10service_accounts\x18\x03 \x03(\tR\x0fserviceAccountsBYZWgithub.com/gravitational/teleport/api/gen/proto/go/teleport/scopes/joining/v1;joiningv1b\x06proto3"
 
 var (
 	file_teleport_scopes_joining_v1_token_proto_rawDescOnce sync.Once
@@ -462,26 +591,30 @@ func file_teleport_scopes_joining_v1_token_proto_rawDescGZIP() []byte {
 	return file_teleport_scopes_joining_v1_token_proto_rawDescData
 }
 
-var file_teleport_scopes_joining_v1_token_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_teleport_scopes_joining_v1_token_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_teleport_scopes_joining_v1_token_proto_goTypes = []any{
 	(*ScopedToken)(nil),       // 0: teleport.scopes.joining.v1.ScopedToken
 	(*ScopedTokenSpec)(nil),   // 1: teleport.scopes.joining.v1.ScopedTokenSpec
 	(*ScopedTokenStatus)(nil), // 2: teleport.scopes.joining.v1.ScopedTokenStatus
 	(*AWS)(nil),               // 3: teleport.scopes.joining.v1.AWS
-	(*AWS_Rule)(nil),          // 4: teleport.scopes.joining.v1.AWS.Rule
-	(*v1.Metadata)(nil),       // 5: teleport.header.v1.Metadata
+	(*GCP)(nil),               // 4: teleport.scopes.joining.v1.GCP
+	(*AWS_Rule)(nil),          // 5: teleport.scopes.joining.v1.AWS.Rule
+	(*GCP_Rule)(nil),          // 6: teleport.scopes.joining.v1.GCP.Rule
+	(*v1.Metadata)(nil),       // 7: teleport.header.v1.Metadata
 }
 var file_teleport_scopes_joining_v1_token_proto_depIdxs = []int32{
-	5, // 0: teleport.scopes.joining.v1.ScopedToken.metadata:type_name -> teleport.header.v1.Metadata
+	7, // 0: teleport.scopes.joining.v1.ScopedToken.metadata:type_name -> teleport.header.v1.Metadata
 	1, // 1: teleport.scopes.joining.v1.ScopedToken.spec:type_name -> teleport.scopes.joining.v1.ScopedTokenSpec
 	2, // 2: teleport.scopes.joining.v1.ScopedToken.status:type_name -> teleport.scopes.joining.v1.ScopedTokenStatus
 	3, // 3: teleport.scopes.joining.v1.ScopedTokenSpec.aws:type_name -> teleport.scopes.joining.v1.AWS
-	4, // 4: teleport.scopes.joining.v1.AWS.allow:type_name -> teleport.scopes.joining.v1.AWS.Rule
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 4: teleport.scopes.joining.v1.ScopedTokenSpec.gcp:type_name -> teleport.scopes.joining.v1.GCP
+	5, // 5: teleport.scopes.joining.v1.AWS.allow:type_name -> teleport.scopes.joining.v1.AWS.Rule
+	6, // 6: teleport.scopes.joining.v1.GCP.allow:type_name -> teleport.scopes.joining.v1.GCP.Rule
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_teleport_scopes_joining_v1_token_proto_init() }
@@ -495,7 +628,7 @@ func file_teleport_scopes_joining_v1_token_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_teleport_scopes_joining_v1_token_proto_rawDesc), len(file_teleport_scopes_joining_v1_token_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

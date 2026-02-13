@@ -854,6 +854,8 @@ func NewServer(cfg *InitConfig, opts ...ServerOption) (as *Server, err error) {
 
 	as.RegisterLoginHook(as.ulsGenerator.LoginHook(services.UserLoginStates))
 
+	as.SetSAMLService(&ossSAMLService{a: as})
+
 	as.pdp, err = decision.NewService(decision.Config{
 		AccessPoint:  as.Cache,
 		ULSGenerator: as.ulsGenerator,

@@ -1,4 +1,4 @@
-name: Build Teleport SAML OSS Docker Image
+name: Build Teleport SAML OSS
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -73,3 +73,43 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+
+      - name: Extract binaries from Docker image
+        run: |
+          docker create --name extract ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_short }}
+          mkdir -p dist
+          for bin in teleport tctl tsh tbot; do
+            docker cp extract:/usr/local/bin/$bin dist/$bin
+          done
+          docker rm extract
+          cd dist
+          tar czf teleport-saml-oss-${{ steps.version.outputs.version }}-linux-amd64.tar.gz teleport tctl tsh tbot
+          sha256sum teleport-saml-oss-${{ steps.version.outputs.version }}-linux-amd64.tar.gz > checksums.txt
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: saml-oss-${{ steps.version.outputs.version }}
+          name: Teleport SAML OSS ${{ steps.version.outputs.version }}
+          body: |
+            Teleport ${{ steps.version.outputs.version }} with SAML authentication enabled for OSS.
+
+            ## Install or upgrade
+            ```bash
+            curl -sL https://raw.githubusercontent.com/ivan-bax/teleport/feature/saml-oss/install-teleport-saml.sh | sudo bash
+            ```
+
+            ## Docker
+            ```bash
+            docker pull ghcr.io/ivan-bax/teleport-saml-oss:${{ steps.version.outputs.version_short }}
+            ```
+
+            ## Binaries
+            - `teleport` — Main server
+            - `tctl` — Admin CLI
+            - `tsh` — User CLI
+            - `tbot` — Machine ID bot
+          files: |
+            dist/teleport-saml-oss-${{ steps.version.outputs.version }}-linux-amd64.tar.gz
+            dist/checksums.txt
+          make_latest: true

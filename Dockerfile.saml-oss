@@ -9,16 +9,20 @@
 FROM node:24.13.0-bookworm AS webui
 
 # Install Rust and WASM toolchain
+# Use stable Rust for installing CLI tools (wasm-bindgen-cli needs edition2024),
+# then add 1.81.0 as the toolchain for compiling the WASM module.
 ENV RUST_VERSION=1.81.0
 ENV WASM_BINDGEN_VERSION=0.2.99
 ENV WASM_OPT_VERSION=0.116.1
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        sh -s -- -y --default-toolchain ${RUST_VERSION} && \
+        sh -s -- -y --default-toolchain stable && \
     . "$HOME/.cargo/env" && \
-    rustup target add wasm32-unknown-unknown && \
     cargo install wasm-bindgen-cli@${WASM_BINDGEN_VERSION} && \
-    cargo install wasm-opt@${WASM_OPT_VERSION}
+    cargo install wasm-opt@${WASM_OPT_VERSION} && \
+    rustup install ${RUST_VERSION} && \
+    rustup default ${RUST_VERSION} && \
+    rustup target add wasm32-unknown-unknown
 
 ENV PATH="/root/.cargo/bin:${PATH}"
 
@@ -27,26 +31,32 @@ RUN corepack enable pnpm
 
 WORKDIR /src
 
-# Copy package files first for dependency caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy package files, config, and patches first for dependency caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .pnpmfile.cjs .npmrc ./
 COPY web/packages/teleport/package.json web/packages/teleport/
 COPY web/packages/design/package.json web/packages/design/
 COPY web/packages/shared/package.json web/packages/shared/
 COPY web/packages/build/package.json web/packages/build/
+COPY web/patches/ web/patches/
 
 # Install JS dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy web source and Rust/WASM source
-COPY web/ web/
-COPY Cargo.toml Cargo.lock ./
-COPY lib/srv/desktop/rdp/rdpclient/ lib/srv/desktop/rdp/rdpclient/
+# Copy full source (needed for tsconfig, Cargo workspace, etc.)
+COPY . .
 
-# Build WASM module
-RUN pnpm build-wasm
+# Build WASM module (ironrdp)
+RUN cargo build --package ironrdp --lib --target wasm32-unknown-unknown --release && \
+    wasm-opt target/wasm32-unknown-unknown/release/ironrdp.wasm \
+        -o target/wasm32-unknown-unknown/release/ironrdp.wasm -O && \
+    mkdir -p web/packages/shared/libs/ironrdp/pkg && \
+    wasm-bindgen target/wasm32-unknown-unknown/release/ironrdp.wasm \
+        --out-dir web/packages/shared/libs/ironrdp/pkg --typescript --target web && \
+    echo '{"name":"ironrdp","version":"0.1.0","module":"ironrdp.js","types":"ironrdp.d.ts","sideEffects":true}' \
+        > web/packages/shared/libs/ironrdp/pkg/package.json
 
-# Build web UI (OSS) — source already has SAML connector changes
-RUN pnpm build-ui-oss
+# Build web UI (OSS) — run vite directly since WASM is already built above
+RUN cd web/packages/teleport && npx vite build
 
 # ----- Build Go binaries -----
 FROM golang:1.25-bookworm AS builder

@@ -145,10 +145,10 @@ if [ ! -f "$OUTDIR/index.html" ]; then
     exit 1
 fi
 FALLBACKSH
-chmod +x /tmp/fallback_extract.sh
 
 # Try fallback if first extraction failed
-RUN if [ ! -f /tmp/webassets/index.html ]; then \
+RUN chmod +x /tmp/fallback_extract.sh && \
+    if [ ! -f /tmp/webassets/index.html ]; then \
       /tmp/fallback_extract.sh /tmp/webassets /tmp/teleport/teleport || true; \
     fi
 

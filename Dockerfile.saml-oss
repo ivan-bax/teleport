@@ -75,13 +75,13 @@ COPY . .
 COPY --from=webui /src/webassets/teleport/ /src/webassets/teleport/
 
 # Build teleport binaries
-RUN CGO_ENABLED=1 go build -tags "webassets_embed" \
+RUN CGO_ENABLED=1 go build -tags "webassets_embed" -ldflags="-s -w" \
         -o /go/bin/teleport ./tool/teleport && \
-    CGO_ENABLED=1 go build -tags "webassets_embed" \
+    CGO_ENABLED=1 go build -tags "webassets_embed" -ldflags="-s -w" \
         -o /go/bin/tctl ./tool/tctl && \
-    CGO_ENABLED=1 go build \
+    CGO_ENABLED=1 go build -ldflags="-s -w" \
         -o /go/bin/tsh ./tool/tsh && \
-    CGO_ENABLED=1 go build \
+    CGO_ENABLED=1 go build -ldflags="-s -w" \
         -o /go/bin/tbot ./tool/tbot
 
 # ----- Runtime stage -----

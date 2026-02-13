@@ -1,0 +1,27 @@
+version: v3
+teleport:
+  nodename: teleport-saml-test
+  data_dir: /home/ivan/personal-projects/teleport/test-saml/data
+  log:
+    output: stderr
+    severity: DEBUG
+
+auth_service:
+  enabled: true
+  listen_addr: 0.0.0.0:3025
+  cluster_name: teleport.aivandrago.me
+  tokens:
+    - "proxy,node:test-insecure-token"
+
+proxy_service:
+  enabled: true
+  listen_addr: 0.0.0.0:3023
+  web_listen_addr: 0.0.0.0:443
+  public_addr: teleport.aivandrago.me:443
+  acme:
+    enabled: true
+    email: ivan@aivandrago.me
+
+ssh_service:
+  enabled: true
+  listen_addr: 0.0.0.0:3022

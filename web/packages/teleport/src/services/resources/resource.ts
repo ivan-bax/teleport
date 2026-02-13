@@ -260,6 +260,34 @@ class ResourceService {
   deleteGithubConnector(name: string) {
     return api.delete(cfg.getGithubConnectorsUrl(name));
   }
+
+  async fetchSamlConnectors(): Promise<Resource<'saml'>[]> {
+    return api
+      .get(cfg.getSamlConnectorsUrl())
+      .then(res => makeResourceList<'saml'>(res));
+  }
+
+  fetchSamlConnector(name: string) {
+    return api
+      .get(cfg.getSamlConnectorsUrl(name))
+      .then(res => makeResource<'saml'>(res));
+  }
+
+  createSamlConnector(content: string) {
+    return api
+      .post(cfg.getSamlConnectorsUrl(), { content })
+      .then(res => makeResource<'saml'>(res));
+  }
+
+  updateSamlConnector(name: string, content: string) {
+    return api
+      .put(cfg.getSamlConnectorsUrl(name), { content })
+      .then(res => makeResource<'saml'>(res));
+  }
+
+  deleteSamlConnector(name: string) {
+    return api.delete(cfg.getSamlConnectorsUrl(name));
+  }
 }
 
 export default ResourceService;

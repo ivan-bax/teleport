@@ -5,11 +5,6 @@ on:
     branches:
       - feature/saml-oss
   workflow_dispatch:
-    inputs:
-      teleport_version:
-        description: 'Teleport version tag (e.g. v18.6.8). Leave empty to auto-detect from branch.'
-        required: false
-        default: ''
 
 env:
   REGISTRY: ghcr.io
@@ -32,22 +27,16 @@ jobs:
       - name: Detect Teleport version
         id: version
         run: |
-          if [ -n "${{ github.event.inputs.teleport_version }}" ]; then
-            VERSION="${{ github.event.inputs.teleport_version }}"
-          else
-            # Extract version from the most recent upstream release tag in history
-            VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || echo "")
-            if [ -z "$VERSION" ]; then
-              # Fallback: parse version from api/version.go
-              RAW=$(grep -oP 'Version\s*=\s*"\K[^"]+' api/version.go 2>/dev/null | head -1)
-              if [ -n "$RAW" ]; then
-                VERSION="v${RAW}"
-              fi
+          VERSION=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || echo "")
+          if [ -z "$VERSION" ]; then
+            RAW=$(grep -oP 'Version\s*=\s*"\K[^"]+' api/version.go 2>/dev/null | head -1)
+            if [ -n "$RAW" ]; then
+              VERSION="v${RAW}"
             fi
-            if [ -z "$VERSION" ] || [ "$VERSION" = "v" ]; then
-              echo "ERROR: Could not detect Teleport version"
-              exit 1
-            fi
+          fi
+          if [ -z "$VERSION" ] || [ "$VERSION" = "v" ]; then
+            echo "ERROR: Could not detect Teleport version"
+            exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "version_short=${VERSION#v}" >> "$GITHUB_OUTPUT"
@@ -81,8 +70,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            TELEPORT_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64

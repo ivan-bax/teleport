@@ -341,6 +341,78 @@ func (h *Handler) createGithubConnectorHandle(w http.ResponseWriter, r *http.Req
 	return item, trace.Wrap(err)
 }
 
+// getSAMLConnectorHandle returns a SAML connector by name.
+func (h *Handler) getSAMLConnectorHandle(w http.ResponseWriter, r *http.Request, params httprouter.Params, ctx *SessionContext) (interface{}, error) {
+	clt, err := ctx.GetClient()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	connector, err := clt.GetSAMLConnector(r.Context(), params.ByName("name"), true)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return ui.NewResourceItem(connector)
+}
+
+func (h *Handler) getSAMLConnectorsHandle(w http.ResponseWriter, r *http.Request, params httprouter.Params, ctx *SessionContext) (interface{}, error) {
+	clt, err := ctx.GetClient()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	connectors, err := getSAMLConnectors(r.Context(), clt)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return connectors, nil
+}
+
+func getSAMLConnectors(ctx context.Context, clt authclient.ClientI) ([]ui.ResourceItem, error) {
+	connectors, err := clt.GetSAMLConnectorsWithValidationOptions(ctx, true, types.SAMLConnectorValidationFollowURLs(false))
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return ui.NewSAMLConnectors(connectors)
+}
+
+func (h *Handler) deleteSAMLConnector(w http.ResponseWriter, r *http.Request, params httprouter.Params, ctx *SessionContext) (interface{}, error) {
+	clt, err := ctx.GetClient()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	connectorName := params.ByName("name")
+	if err := clt.DeleteSAMLConnector(r.Context(), connectorName); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	return OK(), nil
+}
+
+func (h *Handler) updateSAMLConnectorHandle(w http.ResponseWriter, r *http.Request, params httprouter.Params, ctx *SessionContext) (interface{}, error) {
+	clt, err := ctx.GetClient()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	item, err := UpdateResource[types.SAMLConnector](r, params, types.KindSAMLConnector, services.UnmarshalSAMLConnector, clt.UpdateSAMLConnector)
+	return item, trace.Wrap(err)
+}
+
+func (h *Handler) createSAMLConnectorHandle(w http.ResponseWriter, r *http.Request, params httprouter.Params, ctx *SessionContext) (interface{}, error) {
+	clt, err := ctx.GetClient()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	item, err := CreateResource(r, types.KindSAMLConnector, services.UnmarshalSAMLConnector, clt.CreateSAMLConnector)
+	return item, trace.Wrap(err)
+}
+
 func (h *Handler) getTrustedClustersHandle(w http.ResponseWriter, r *http.Request, params httprouter.Params, ctx *SessionContext) (interface{}, error) {
 	clt, err := ctx.GetClient()
 	if err != nil {

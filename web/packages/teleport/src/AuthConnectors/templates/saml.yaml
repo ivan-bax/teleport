@@ -1,0 +1,19 @@
+kind: saml
+version: v2
+metadata:
+  name: new_saml_connector
+spec:
+  # Display name shown on the SSO login button
+  display: SAML
+  # Assertion Consumer Service URL — Teleport endpoint that receives SAML responses
+  # Replace <cluster-url> with your Teleport proxy address
+  acs: 'https://<cluster-url>/webapi/saml/acs/new_saml_connector'
+  # Paste the full XML EntityDescriptor from your Identity Provider
+  entity_descriptor: |
+    <paste IdP metadata XML here>
+  # Map IdP attributes/groups to Teleport roles
+  attributes_to_roles:
+    - name: 'groups'
+      value: '<group-name>'
+      roles:
+        - 'access'

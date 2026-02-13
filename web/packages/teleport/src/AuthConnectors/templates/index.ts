@@ -17,8 +17,9 @@
  */
 
 import github from './github.yaml?raw';
+import saml from './saml.yaml?raw';
 
-const templates = { github };
+const templates = { github, saml };
 
-export { github };
+export { github, saml };
 export default templates;

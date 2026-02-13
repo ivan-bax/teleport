@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router';
+import { useHistory, useParams } from 'react-router';
 
 import { Alert, Box, Flex, Indicator } from 'design';
 import { H2 } from 'design/Text/Text';
@@ -39,7 +39,7 @@ import cfg from 'teleport/config';
 import { DefaultAuthConnector, KindAuthConnectors, Resource } from 'teleport/services/resources';
 import useTeleport from 'teleport/useTeleport';
 
-import { GitHubConnectorEditor } from './AuthConnectorEditor';
+import { GitHubConnectorEditor, SamlConnectorEditor } from './AuthConnectorEditor';
 import { ConnectorList } from './ConnectorList';
 import DeleteConnectorDialog from './DeleteConnectorDialog';
 import EmptyList from './EmptyList';
@@ -51,18 +51,29 @@ export const description =
 /**
  * AuthConnectorsContainer is the container for the Auth Connectors feature and handles routing to the relevant page based on the URL.
  */
+function ConnectorEditorRouter({ isNew = false }) {
+  const { connectorType } = useParams<{ connectorType: string }>();
+  switch (connectorType) {
+    case 'saml':
+      return <SamlConnectorEditor isNew={isNew} />;
+    case 'github':
+    default:
+      return <GitHubConnectorEditor isNew={isNew} />;
+  }
+}
+
 export function AuthConnectorsContainer() {
   return (
     <Switch>
       <Route
         key="auth-connector-edit"
         path={cfg.routes.ssoConnector.edit}
-        render={() => <GitHubConnectorEditor />}
+        render={() => <ConnectorEditorRouter />}
       />
       <Route
         key="auth-connector-new"
         path={cfg.routes.ssoConnector.create}
-        render={() => <GitHubConnectorEditor isNew={true} />}
+        render={() => <ConnectorEditorRouter isNew={true} />}
       />
       <Route
         key="auth-connector-list"
@@ -152,15 +163,25 @@ export function AuthConnectors() {
     <FeatureBox>
       <ResponsiveFeatureHeader>
         <FeatureHeaderTitle>Auth Connectors</FeatureHeaderTitle>
-        <InfoGuideButton config={{ guide: <InfoGuide isGitHub={true} /> }}>
-          <ResponsiveAddButton
-            fill="border"
-            onClick={() =>
-              history.push(cfg.getCreateAuthConnectorRoute('github'))
-            }
-          >
-            New GitHub Connector
-          </ResponsiveAddButton>
+        <InfoGuideButton config={{ guide: <InfoGuide isGitHub={false} /> }}>
+          <Flex gap={2}>
+            <ResponsiveAddButton
+              fill="border"
+              onClick={() =>
+                history.push(cfg.getCreateAuthConnectorRoute('github'))
+              }
+            >
+              New GitHub Connector
+            </ResponsiveAddButton>
+            <ResponsiveAddButton
+              fill="border"
+              onClick={() =>
+                history.push(cfg.getCreateAuthConnectorRoute('saml'))
+              }
+            >
+              New SAML Connector
+            </ResponsiveAddButton>
+          </Flex>
         </InfoGuideButton>
       </ResponsiveFeatureHeader>
       {fetchAttempt.status === 'error' && (

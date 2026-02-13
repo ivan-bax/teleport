@@ -36,12 +36,11 @@ import { FeatureBox, FeatureHeaderTitle } from 'teleport/components/Layout';
 import { Route, Switch } from 'teleport/components/Router';
 import useResources from 'teleport/components/useResources';
 import cfg from 'teleport/config';
-import { DefaultAuthConnector, Resource } from 'teleport/services/resources';
+import { DefaultAuthConnector, KindAuthConnectors, Resource } from 'teleport/services/resources';
 import useTeleport from 'teleport/useTeleport';
 
 import { GitHubConnectorEditor } from './AuthConnectorEditor';
 import { ConnectorList } from './ConnectorList';
-import { CtaConnectors } from './ConnectorList/CTAConnectors';
 import DeleteConnectorDialog from './DeleteConnectorDialog';
 import EmptyList from './EmptyList';
 import templates from './templates';
@@ -80,16 +79,22 @@ export function AuthConnectorsContainer() {
  */
 export function AuthConnectors() {
   const ctx = useTeleport();
-  const [items, setItems] = useState<Resource<'github'>[]>([]);
+  const [items, setItems] = useState<Resource<KindAuthConnectors>[]>([]);
   const [defaultConnector, setDefaultConnector] =
     useState<DefaultAuthConnector>();
 
   const [fetchAttempt, fetchConnectors] = useAsync(
     useCallback(async () => {
-      return await ctx.resourceService.fetchGithubConnectors().then(res => {
-        setItems(res.connectors);
-        setDefaultConnector(res.defaultConnector);
-      });
+      const [githubRes, samlConnectors] = await Promise.all([
+        ctx.resourceService.fetchGithubConnectors(),
+        ctx.resourceService.fetchSamlConnectors().catch(() => [] as Resource<'saml'>[]),
+      ]);
+      const allConnectors: Resource<KindAuthConnectors>[] = [
+        ...githubRes.connectors,
+        ...samlConnectors,
+      ];
+      setItems(allConnectors);
+      setDefaultConnector(githubRes.defaultConnector);
     }, [ctx.resourceService])
   );
 
@@ -109,9 +114,12 @@ export function AuthConnectors() {
   }
 
   function remove(name: string) {
-    return ctx.resourceService
-      .deleteGithubConnector(name)
-      .then(fetchConnectors);
+    // Find the item to determine its kind for proper deletion
+    const item = items.find(i => i.name === name);
+    const deletePromise = item?.kind === 'saml'
+      ? ctx.resourceService.deleteSamlConnector(name)
+      : ctx.resourceService.deleteGithubConnector(name);
+    return deletePromise.then(fetchConnectors);
   }
 
   useEffect(() => {
@@ -190,7 +198,6 @@ export function AuthConnectors() {
                 />
               )}
             </Box>
-            <CtaConnectors />
           </Flex>
         </Flex>
       )}

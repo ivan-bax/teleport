@@ -1,0 +1,234 @@
+##
+## Multi-stage Dockerfile for Teleport OSS with SAML support
+##
+## Downloads pre-built web assets from the official release, patches them
+## for SAML management UI, and compiles the Go binaries from source.
+##
+
+# ----- Extract web assets from official binary -----
+FROM golang:1.25-bookworm AS webextract
+
+ARG TELEPORT_VERSION=v18.6.8
+ARG TARGETARCH=amd64
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl brotli python3
+
+# Download official binary and extract embedded web assets using a Go helper
+RUN ARCH=$(case "$TARGETARCH" in amd64) echo "amd64";; arm64) echo "arm64";; *) echo "$TARGETARCH";; esac) && \
+    curl -sL "https://cdn.teleport.dev/teleport-${TELEPORT_VERSION}-linux-${ARCH}-bin.tar.gz" -o /tmp/teleport.tar.gz && \
+    tar -xzf /tmp/teleport.tar.gz -C /tmp && \
+    rm /tmp/teleport.tar.gz
+
+# Extract web assets from the official binary using a small Go program
+COPY <<'EXTRACTGO' /tmp/extract_webassets.go
+package main
+
+import (
+	"archive/zip"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+func main() {
+	if len(os.Args) < 3 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <binary> <output-dir>\n", os.Args[0])
+		os.Exit(1)
+	}
+
+	data, err := os.ReadFile(os.Args[1])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading binary: %v\n", err)
+		os.Exit(1)
+	}
+
+	outDir := os.Args[2]
+
+	// Go embed uses a zip-like format at the end of the binary.
+	// Search for the zip end-of-central-directory signature from the end.
+	eocdSig := []byte{0x50, 0x4b, 0x05, 0x06}
+	pos := -1
+	for i := len(data) - 22; i >= 0 && i > len(data)-65536-22; i-- {
+		if bytes.Equal(data[i:i+4], eocdSig) {
+			pos = i
+			break
+		}
+	}
+
+	if pos == -1 {
+		// Go embed doesn't use zip. It uses its own format.
+		// Try to find files by looking for the embed header markers.
+		fmt.Fprintf(os.Stderr, "No zip EOCD found, trying Go embed extraction...\n")
+
+		// Go embed stores files with path prefixes. Look for known paths.
+		extractByPattern(data, outDir)
+		return
+	}
+
+	// Parse zip
+	cdOffset := int64(binary.LittleEndian.Uint32(data[pos+16 : pos+20]))
+	r, err := zip.NewReader(bytes.NewReader(data[cdOffset:]), int64(len(data))-cdOffset)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading zip: %v\n", err)
+		os.Exit(1)
+	}
+
+	count := 0
+	for _, f := range r.File {
+		if strings.HasPrefix(f.Name, "webassets/teleport/") {
+			relPath := strings.TrimPrefix(f.Name, "webassets/teleport/")
+			outPath := filepath.Join(outDir, relPath)
+
+			if f.FileInfo().IsDir() {
+				os.MkdirAll(outPath, 0755)
+				continue
+			}
+
+			os.MkdirAll(filepath.Dir(outPath), 0755)
+			rc, _ := f.Open()
+			out, _ := os.Create(outPath)
+			io.Copy(out, rc)
+			out.Close()
+			rc.Close()
+			count++
+		}
+	}
+	fmt.Printf("Extracted %d files\n", count)
+}
+
+func extractByPattern(data []byte, outDir string) {
+	// Fallback: just note that we need pre-populated webassets
+	fmt.Fprintf(os.Stderr, "Could not extract from binary. Ensure webassets/ directory is populated.\n")
+	os.Exit(1)
+}
+EXTRACTGO
+
+RUN cd /tmp && go run extract_webassets.go /tmp/teleport/teleport /tmp/webassets 2>&1 || true
+
+# If binary extraction failed, use the simpler approach: the official tarball
+# may not have extractable embed data. In that case, we download webassets
+# from the webassets release artifact or use the approach of running the
+# binary briefly to capture the assets.
+COPY <<'FALLBACKSH' /tmp/fallback_extract.sh
+#!/bin/bash
+set -e
+OUTDIR="$1"
+BINARY="$2"
+
+# Check if extraction already succeeded
+if [ -f "$OUTDIR/index.html" ] && [ -f "$OUTDIR/app/app.js.br" ]; then
+    echo "Web assets already extracted."
+    exit 0
+fi
+
+echo "Trying fallback: fetch web assets via HTTP from the binary..."
+$BINARY start --config=/dev/null &
+PID=$!
+sleep 3
+
+# Try to grab the assets
+mkdir -p "$OUTDIR/app"
+curl -sk https://localhost:3080/web/config.js > /dev/null 2>&1 || true
+
+# The binary serves the embedded assets. We can grab index.html and app.js
+# but this is fragile. Better approach: just create a minimal placeholder.
+kill $PID 2>/dev/null || true
+wait $PID 2>/dev/null || true
+
+# If we still don't have assets, indicate we need the build to skip UI patching
+if [ ! -f "$OUTDIR/index.html" ]; then
+    echo "WARN: Could not extract web assets from binary"
+    exit 1
+fi
+FALLBACKSH
+chmod +x /tmp/fallback_extract.sh
+
+# Try fallback if first extraction failed
+RUN if [ ! -f /tmp/webassets/index.html ]; then \
+      /tmp/fallback_extract.sh /tmp/webassets /tmp/teleport/teleport || true; \
+    fi
+
+# ----- Build stage -----
+FROM golang:1.25-bookworm AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends brotli
+
+WORKDIR /src
+
+# Copy go module files first for caching
+COPY go.mod go.sum ./
+COPY api/go.mod api/go.sum ./api/
+RUN go mod download
+
+# Copy the full source tree
+COPY . .
+
+# Copy extracted web assets (may be empty if extraction failed)
+COPY --from=webextract /tmp/webassets/ /src/webassets/teleport/
+
+# Patch web assets for SAML connector management UI
+RUN if [ -f /src/webassets/teleport/app/app.js.br ]; then \
+        brotli -d /src/webassets/teleport/app/app.js.br -o /tmp/app.js && \
+        # Patch 1: Add samlConnectorsPath config
+        sed -i 's|githubConnectorPath:"/v1/webapi/github/connector/:name",|githubConnectorPath:"/v1/webapi/github/connector/:name",samlConnectorsPath:"/v1/webapi/samlconnectors/:name?",|' /tmp/app.js && \
+        # Patch 2: Add getSamlConnectorsUrl method
+        sed -i 's|getGithubConnectorUrl(e){return Ae(G.api.githubConnectorPath,{name:e})}|getGithubConnectorUrl(e){return Ae(G.api.githubConnectorPath,{name:e})},getSamlConnectorsUrl(e){return Ae(G.api.samlConnectorsPath,{name:e})}|' /tmp/app.js && \
+        # Patch 3: Add SAML CRUD methods to ResourceService
+        sed -i 's|deleteGithubConnector(t){return ge.delete(G.getGithubConnectorsUrl(t))}}|deleteGithubConnector(t){return ge.delete(G.getGithubConnectorsUrl(t))}async fetchSamlConnectors(){return ge.get(G.getSamlConnectorsUrl()).then(t=>yA(t))}fetchSamlConnector(t){return ge.get(G.getSamlConnectorsUrl(t)).then(n=>El(n))}createSamlConnector(t){return ge.post(G.getSamlConnectorsUrl(),{content:t}).then(n=>El(n))}updateSamlConnector(t,n){return ge.put(G.getSamlConnectorsUrl(t),{content:n}).then(r=>El(r))}deleteSamlConnector(t){return ge.delete(G.getSamlConnectorsUrl(t))}}|' /tmp/app.js && \
+        # Patch 4: AuthConnectors page fetches both GitHub + SAML
+        sed -i 's|async()=>await e.resourceService.fetchGithubConnectors().then(m=>{n(m.connectors),i(m.defaultConnector)})|async()=>{const[m,p]=await Promise.all([e.resourceService.fetchGithubConnectors(),e.resourceService.fetchSamlConnectors().catch(()=>[])]);n([...m.connectors,...p]),i(m.defaultConnector)}|' /tmp/app.js && \
+        # Patch 5: Delete handler routes by kind
+        sed -i 's|function d(m){return e.resourceService.deleteGithubConnector(m).then(u)}|function d(m){const v=t.find(x=>x.name===m);return(v\&\&v.kind==="saml"?e.resourceService.deleteSamlConnector(m):e.resourceService.deleteGithubConnector(m)).then(u)}|' /tmp/app.js && \
+        # Patch 6: Editor reads connectorType from URL params
+        sed -i 's|function E7({isNew:e=!1}){const{connectorName:t}=Us()|function E7({isNew:e=!1}){const{connectorName:t,connectorType:ct}=Us()|' /tmp/app.js && \
+        # Patch 7: Editor uses SAML API for SAML connectors
+        sed -i 's|const v=await n.resourceService.fetchGithubConnector(t);a(v.content),o(v.content)|const v=await(ct==="saml"?n.resourceService.fetchSamlConnector(t):n.resourceService.fetchGithubConnector(t));a(v.content),o(v.content)|' /tmp/app.js && \
+        # Patch 8: Editor save uses correct API
+        sed -i 's|e?await n.resourceService.createGithubConnector(i).then(()=>r.push(G.routes.sso)):await n.resourceService.updateGithubConnector(t,i).then(()=>r.push(G.routes.sso))|e?await(ct==="saml"?n.resourceService.createSamlConnector(i):n.resourceService.createGithubConnector(i)).then(()=>r.push(G.routes.sso)):await(ct==="saml"?n.resourceService.updateSamlConnector(t,i):n.resourceService.updateGithubConnector(t,i)).then(()=>r.push(G.routes.sso))|' /tmp/app.js && \
+        # Patch 9: isGithub prop
+        sed -i 's|isGithub:!0|isGithub:ct!=="saml"|' /tmp/app.js && \
+        # Recompress
+        brotli -q 5 /tmp/app.js -o /src/webassets/teleport/app/app.js.br -f && \
+        echo "Web assets patched successfully" ; \
+    else \
+        echo "WARNING: No web assets to patch" ; \
+    fi
+
+# Build teleport binaries
+RUN CGO_ENABLED=1 go build -tags "webassets_embed" \
+        -o /go/bin/teleport ./tool/teleport && \
+    CGO_ENABLED=1 go build -tags "webassets_embed" \
+        -o /go/bin/tctl ./tool/tctl && \
+    CGO_ENABLED=1 go build \
+        -o /go/bin/tsh ./tool/tsh && \
+    CGO_ENABLED=1 go build \
+        -o /go/bin/tbot ./tool/tbot
+
+# ----- Runtime stage -----
+FROM debian:12-slim
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates dumb-init libpam0g libaudit1 libcap-ng0 && \
+    update-ca-certificates && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /go/bin/teleport /usr/local/bin/teleport
+COPY --from=builder /go/bin/tctl /usr/local/bin/tctl
+COPY --from=builder /go/bin/tsh /usr/local/bin/tsh
+COPY --from=builder /go/bin/tbot /usr/local/bin/tbot
+
+RUN mkdir -p /etc/teleport /var/lib/teleport
+
+ENV TELEPORT_INSTALL_METHOD_DOCKERFILE=true
+
+EXPOSE 3023 3024 3025 3080 443
+
+STOPSIGNAL SIGQUIT
+
+ENTRYPOINT ["/usr/bin/dumb-init", "teleport", "start", "-c", "/etc/teleport/teleport.yaml"]

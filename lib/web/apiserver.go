@@ -102,6 +102,7 @@ import (
 	"github.com/gravitational/teleport/lib/player"
 	"github.com/gravitational/teleport/lib/plugin"
 	"github.com/gravitational/teleport/lib/proxy"
+	"github.com/gravitational/teleport/lib/saml"
 	"github.com/gravitational/teleport/lib/reversetunnelclient"
 	"github.com/gravitational/teleport/lib/secret"
 	"github.com/gravitational/teleport/lib/services"
@@ -959,6 +960,11 @@ func (h *Handler) bindDefaultEndpoints() {
 	h.GET("/webapi/github/callback", h.WithMetaRedirect(h.githubCallback))
 	h.POST("/webapi/github/login/console", h.WithLimiter(h.githubLoginConsole))
 
+	// SAML connector handlers
+	h.GET("/webapi/saml/sso", h.WithMetaRedirect(h.samlSSO))
+	h.POST("/webapi/saml/login/console", h.WithLimiter(h.samlLoginConsole))
+	h.POST("/webapi/saml/acs/:connector", h.WithMetaRedirect(h.samlACS))
+
 	// MFA public endpoints.
 	h.POST("/webapi/sites/:site/mfa/required", h.WithClusterAuth(h.isMFARequired))
 	h.POST("/webapi/mfa/login/begin", h.WithLimiter(h.mfaLoginBegin))
@@ -1010,6 +1016,13 @@ func (h *Handler) bindDefaultEndpoints() {
 	h.GET("/webapi/github/connector/:name", h.WithAuth(h.getGithubConnectorHandle))
 	h.PUT("/webapi/github/:name", h.WithAuth(h.updateGithubConnectorHandle))
 	h.DELETE("/webapi/github/:name", h.WithAuth(h.deleteGithubConnector))
+
+	// SAML connector handlers
+	h.GET("/webapi/samlconnectors", h.WithAuth(h.getSAMLConnectorsHandle))
+	h.POST("/webapi/samlconnectors", h.WithAuth(h.createSAMLConnectorHandle))
+	h.GET("/webapi/samlconnectors/:name", h.WithAuth(h.getSAMLConnectorHandle))
+	h.PUT("/webapi/samlconnectors/:name", h.WithAuth(h.updateSAMLConnectorHandle))
+	h.DELETE("/webapi/samlconnectors/:name", h.WithAuth(h.deleteSAMLConnector))
 
 	// Sets the default connector in the auth preference.
 	h.PUT("/webapi/authconnector/default", h.WithAuth(h.setDefaultConnectorHandle))
@@ -2454,6 +2467,188 @@ func (h *Handler) githubCallback(w http.ResponseWriter, r *http.Request, p httpr
 			logger.DebugContext(r.Context(), "GitHub WebSession created with device web token")
 			// if a device web token is present, we must send the user to the device authorize page
 			// to upgrade the session.
+			redirectPath, err := BuildDeviceWebRedirectPath(dwt, res.ClientRedirectURL)
+			if err != nil {
+				logger.DebugContext(r.Context(), "Invalid device web token", "error", err)
+			}
+			return redirectPath
+		}
+		return res.ClientRedirectURL
+	}
+
+	logger.InfoContext(r.Context(), "Callback is redirecting to console login")
+	if len(response.Req.SSHPubKey)+len(response.Req.TLSPubKey) == 0 {
+		logger.ErrorContext(r.Context(), "Not a web or console login request")
+		return client.LoginFailedRedirectURL
+	}
+
+	redirectURL, err := ConstructSSHResponse(AuthParams{
+		ClientRedirectURL: response.Req.ClientRedirectURL,
+		Username:          response.Username,
+		Identity:          response.Identity,
+		Session:           response.Session,
+		Cert:              response.Cert,
+		TLSCert:           response.TLSCert,
+		HostSigners:       response.HostSigners,
+		FIPS:              h.cfg.FIPS,
+		ClientOptions:     response.ClientOptions,
+	})
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Error constructing ssh response", "error", err)
+		return client.LoginFailedRedirectURL
+	}
+
+	return redirectURL.String()
+}
+
+func (h *Handler) samlSSO(w http.ResponseWriter, r *http.Request, p httprouter.Params) string {
+	logger := h.logger.With("auth", "saml")
+	logger.DebugContext(r.Context(), "SSO login start")
+
+	req, err := ParseSSORequestParams(r)
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Failed to extract SSO parameters from request", "error", err)
+		return client.LoginFailedRedirectURL
+	}
+
+	remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Failed to parse request remote address", "error", err)
+		return client.LoginFailedRedirectURL
+	}
+
+	response, err := h.cfg.ProxyClient.CreateSAMLAuthRequest(r.Context(), types.SAMLAuthRequest{
+		CSRFToken:         req.CSRFToken,
+		ConnectorID:       req.ConnectorID,
+		CreateWebSession:  true,
+		ClientRedirectURL: req.ClientRedirectURL,
+		ClientLoginIP:     remoteAddr,
+		ClientUserAgent:   r.UserAgent(),
+	})
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Error creating auth request", "error", err)
+		return client.LoginFailedRedirectURL
+	}
+
+	if len(response.PostForm) > 0 {
+		if err := saml.WriteSAMLPostRequestWithHeaders(w, response.PostForm); err != nil {
+			logger.ErrorContext(r.Context(), "Error writing SAML POST form", "error", err)
+			return client.LoginFailedRedirectURL
+		}
+		return ""
+	}
+
+	return response.RedirectURL
+}
+
+func (h *Handler) samlLoginConsole(w http.ResponseWriter, r *http.Request, p httprouter.Params) (interface{}, error) {
+	logger := h.logger.With("auth", "saml")
+	logger.DebugContext(r.Context(), "Console login start")
+
+	req := new(client.SSOLoginConsoleReq)
+	if err := httplib.ReadResourceJSON(r, req); err != nil {
+		logger.ErrorContext(r.Context(), "Error reading json", "error", err)
+		return nil, trace.AccessDenied("%s", SSOLoginFailureMessage)
+	}
+
+	if err := req.CheckAndSetDefaults(); err != nil {
+		logger.ErrorContext(r.Context(), "Missing request parameters", "error", err)
+		return nil, trace.AccessDenied("%s", SSOLoginFailureMessage)
+	}
+
+	remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Failed to parse request remote address", "error", err)
+		return nil, trace.AccessDenied("%s", SSOLoginFailureMessage)
+	}
+
+	response, err := h.cfg.ProxyClient.CreateSAMLAuthRequest(r.Context(), types.SAMLAuthRequest{
+		ConnectorID:             req.ConnectorID,
+		SshPublicKey:            req.SSHPubKey,
+		TlsPublicKey:            req.TLSPubKey,
+		SshAttestationStatement: req.SSHAttestationStatement.ToProto(),
+		TlsAttestationStatement: req.TLSAttestationStatement.ToProto(),
+		CertTTL:                 req.CertTTL,
+		ClientRedirectURL:       req.RedirectURL,
+		Compatibility:           req.Compatibility,
+		RouteToCluster:          req.RouteToCluster,
+		KubernetesCluster:       req.KubernetesCluster,
+		ClientLoginIP:           remoteAddr,
+		Scope:                   req.Scope,
+	})
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Failed to create SAML auth request", "error", err)
+		if strings.Contains(err.Error(), auth.InvalidClientRedirectErrorMessage) {
+			return nil, trace.AccessDenied("%s", SSOLoginFailureInvalidRedirect)
+		}
+		return nil, trace.AccessDenied("%s", SSOLoginFailureMessage)
+	}
+
+	return &client.SSOLoginConsoleResponse{
+		RedirectURL: response.RedirectURL,
+	}, nil
+}
+
+func (h *Handler) samlACS(w http.ResponseWriter, r *http.Request, p httprouter.Params) string {
+	logger := h.logger.With("auth", "saml")
+	logger.DebugContext(r.Context(), "ACS callback start")
+
+	if err := r.ParseForm(); err != nil {
+		logger.ErrorContext(r.Context(), "Failed to parse form", "error", err)
+		return client.LoginFailedRedirectURL
+	}
+
+	samlResponse := r.FormValue("SAMLResponse")
+	relayState := r.FormValue("RelayState")
+	connectorID := p.ByName("connector")
+
+	if samlResponse == "" {
+		logger.ErrorContext(r.Context(), "Missing SAMLResponse in ACS callback")
+		return client.LoginFailedRedirectURL
+	}
+
+	remoteAddr, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Failed to parse request remote address", "error", err)
+		return client.LoginFailedRedirectURL
+	}
+
+	// Encode relay state and SAML response together using null byte separator.
+	encodedResponse := relayState + "\x00" + samlResponse
+
+	response, err := h.cfg.ProxyClient.ValidateSAMLResponse(r.Context(), encodedResponse, connectorID, remoteAddr)
+	if err != nil {
+		logger.ErrorContext(r.Context(), "Error while processing SAML callback", "error", err)
+
+		if relayState != "" {
+			if request, errGet := h.cfg.ProxyClient.GetSAMLAuthRequest(r.Context(), relayState); errGet == nil && !request.CreateWebSession {
+				if redURL, errEnc := RedirectURLWithError(request.ClientRedirectURL, err); errEnc == nil {
+					return redURL.String()
+				}
+			}
+		}
+
+		return client.LoginFailedBadCallbackRedirectURL
+	}
+
+	if response.Req.CreateWebSession {
+		logger.InfoContext(r.Context(), "Redirecting to web browser")
+
+		res := &SSOCallbackResponse{
+			CSRFToken:         response.Req.CSRFToken,
+			Username:          response.Username,
+			SessionName:       response.Session.GetName(),
+			SessionExpiry:     response.Session.Expiry(),
+			ClientRedirectURL: response.Req.ClientRedirectURL,
+		}
+
+		if err := SSOSetWebSessionAndRedirectURL(w, r, res, true); err != nil {
+			logger.ErrorContext(r.Context(), "Error setting web session", "error", err)
+			return client.LoginFailedRedirectURL
+		}
+
+		if dwt := response.Session.GetDeviceWebToken(); dwt != nil {
+			logger.DebugContext(r.Context(), "SAML WebSession created with device web token")
 			redirectPath, err := BuildDeviceWebRedirectPath(dwt, res.ClientRedirectURL)
 			if err != nil {
 				logger.DebugContext(r.Context(), "Invalid device web token", "error", err)

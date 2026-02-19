@@ -423,6 +423,7 @@ func (p *defaultModules) Features() Features {
 			entitlements.JoinActiveSessions: {Enabled: true, Limit: 0},
 			entitlements.K8s:                {Enabled: true, Limit: 0},
 			entitlements.SAML:               {Enabled: true, Limit: 0},
+			entitlements.DeviceTrust:        {Enabled: true, Limit: 0},
 		},
 	}
 }

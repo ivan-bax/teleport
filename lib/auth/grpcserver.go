@@ -60,6 +60,7 @@ import (
 	dbobjectv1pb "github.com/gravitational/teleport/api/gen/proto/go/teleport/dbobject/v1"
 	dbobjectimportrulev1pb "github.com/gravitational/teleport/api/gen/proto/go/teleport/dbobjectimportrule/v1"
 	decisionpb "github.com/gravitational/teleport/api/gen/proto/go/teleport/decision/v1alpha1"
+	devicepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/devicetrust/v1"
 	discoveryconfigv1pb "github.com/gravitational/teleport/api/gen/proto/go/teleport/discoveryconfig/v1"
 	dynamicwindowsv1pb "github.com/gravitational/teleport/api/gen/proto/go/teleport/dynamicwindows/v1"
 	gitserverv1pb "github.com/gravitational/teleport/api/gen/proto/go/teleport/gitserver/v1"
@@ -133,6 +134,7 @@ import (
 	"github.com/gravitational/teleport/lib/backend"
 	"github.com/gravitational/teleport/lib/decision/decisionv1"
 	"github.com/gravitational/teleport/lib/defaults"
+	"github.com/gravitational/teleport/lib/devicetrust/assertserver"
 	"github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/httplib"
 	iterstream "github.com/gravitational/teleport/lib/itertools/stream"
@@ -6497,6 +6499,15 @@ func NewGRPCServer(cfg GRPCServerConfig) (*GRPCServer, error) {
 	if cfg.PluginRegistry == nil || !cfg.PluginRegistry.IsRegistered("auth.enterprise") {
 		loginrulev1pb.RegisterLoginRuleServiceServer(server, loginrulev1.NotImplementedService{})
 		secreportsv1pb.RegisterSecReportsServiceServer(server, secreportsv1.NotImplementedService{})
+
+		// Register OSS device trust service.
+		ossDeviceTrust := newOSSDeviceTrustService(cfg.AuthServer.bk)
+		devicepb.RegisterDeviceTrustServiceServer(server, ossDeviceTrust)
+		// Wire device web token creation and device assertion for the auth server.
+		cfg.AuthServer.SetCreateDeviceWebTokenFunc(ossDeviceTrust.CreateDeviceWebToken)
+		cfg.AuthServer.SetDeviceAssertionServer(func() (assertserver.Ceremony, error) {
+			return ossDeviceTrust.CreateAssertCeremony()
+		})
 
 		srv, err := workloadidentityv1.NewX509OverridesService(workloadidentityv1.X509OverridesServiceConfig{
 			Authorizer: cfg.Authorizer,

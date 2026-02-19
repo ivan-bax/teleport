@@ -24,6 +24,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"sync"
 
@@ -34,6 +35,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	devicepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/devicetrust/v1"
+	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/backend"
 	"github.com/gravitational/teleport/lib/devicetrust/assertserver"
 	"github.com/gravitational/teleport/lib/devicetrust/challenge"
@@ -52,7 +54,9 @@ type authnStream interface {
 type ossDeviceTrustService struct {
 	devicepb.UnimplementedDeviceTrustServiceServer
 
-	backend backend.Backend
+	backend    backend.Backend
+	authServer *Server
+	authorizer authz.Authorizer
 
 	// mu protects in-memory enrollment tokens and web auth attempts.
 	mu           sync.Mutex
@@ -67,9 +71,11 @@ type webAuthnAttempt struct {
 	confirmToken     string
 }
 
-func newOSSDeviceTrustService(b backend.Backend) *ossDeviceTrustService {
+func newOSSDeviceTrustService(b backend.Backend, authServer *Server, authorizer authz.Authorizer) *ossDeviceTrustService {
 	return &ossDeviceTrustService{
 		backend:      b,
+		authServer:   authServer,
+		authorizer:   authorizer,
 		enrollTokens: make(map[string]string),
 		webTokens:    make(map[string]*webAuthnAttempt),
 	}
@@ -421,11 +427,43 @@ func (s *ossDeviceTrustService) AuthenticateDevice(stream devicepb.DeviceTrustSe
 		}))
 	}
 
+	// Augment user certificates with device extensions.
+	ctx := stream.Context()
+	authCtx, err := s.authorizer.Authorize(ctx)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	opts := &AugmentUserCertificateOpts{
+		DeviceExtensions: &DeviceExtensions{
+			DeviceID:     dev.Id,
+			AssetTag:     dev.AssetTag,
+			CredentialID: dev.Credential.Id,
+		},
+	}
+	if initReq.UserCertificates != nil && len(initReq.UserCertificates.SshAuthorizedKey) > 0 {
+		opts.SSHAuthorizedKey = initReq.UserCertificates.SshAuthorizedKey
+		// The SSH key ownership was proven via the device challenge-response
+		// ceremony (the client signs the challenge with both device key and SSH key).
+		opts.SSHKeySatisfiedChallenge = true
+	}
+
+	certs, err := s.authServer.AugmentContextUserCertificates(ctx, authCtx, opts)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	// certs.TLS is PEM-encoded; the client expects DER bytes in X509Der.
+	var tlsDER []byte
+	if block, _ := pem.Decode(certs.TLS); block != nil {
+		tlsDER = block.Bytes
+	}
+
 	return trace.Wrap(stream.Send(&devicepb.AuthenticateDeviceResponse{
 		Payload: &devicepb.AuthenticateDeviceResponse_UserCertificates{
 			UserCertificates: &devicepb.UserCertificates{
-				X509Der:          []byte("<augmented X.509 cert>"),
-				SshAuthorizedKey: []byte("<augmented SSH cert>"),
+				X509Der:          tlsDER,
+				SshAuthorizedKey: certs.SSH,
 			},
 		},
 	}))

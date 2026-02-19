@@ -5641,7 +5641,12 @@ func (process *TeleportProcess) initProxyEndpoint(conn *Connector) error {
 		ScopedRoleReader: accessPoint.ScopedRoleReader(),
 		LockWatcher:      lockWatcher,
 		Logger:           process.logger.With(teleport.ComponentKey, teleport.Component(teleport.ComponentReverseTunnelServer, process.id)),
-		PermitCaching:    process.Config.CachePolicy.Enabled,
+		DeviceAuthorization: authz.DeviceAuthorizationOpts{
+			// Disable global device_trust.mode at the proxy transport level.
+			// Device trust enforcement is handled per-RPC by the auth server.
+			DisableGlobalMode: true,
+		},
+		PermitCaching: process.Config.CachePolicy.Enabled,
 	}
 
 	authorizer, err := authz.NewAuthorizer(authorizerOpts)
@@ -7264,10 +7269,16 @@ func (process *TeleportProcess) initSecureGRPCServer(cfg initSecureGRPCServerCfg
 	}
 
 	authorizer, err := authz.NewAuthorizer(authz.AuthorizerOpts{
-		ClusterName:   clusterName,
-		AccessPoint:   cfg.accessPoint,
-		LockWatcher:   cfg.lockWatcher,
-		Logger:        process.logger.With(teleport.ComponentKey, teleport.Component(teleport.ComponentProxySecureGRPC, process.id)),
+		ClusterName: clusterName,
+		AccessPoint: cfg.accessPoint,
+		LockWatcher: cfg.lockWatcher,
+		Logger:      process.logger.With(teleport.ComponentKey, teleport.Component(teleport.ComponentProxySecureGRPC, process.id)),
+		DeviceAuthorization: authz.DeviceAuthorizationOpts{
+			// Disable global device_trust.mode at the transport level so that
+			// device authentication RPCs can proceed. Device trust enforcement
+			// is handled per-RPC by the auth server.
+			DisableGlobalMode: true,
+		},
 		PermitCaching: process.Config.CachePolicy.Enabled,
 	})
 	if err != nil {

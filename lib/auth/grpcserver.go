@@ -6578,7 +6578,7 @@ func NewGRPCServer(cfg GRPCServerConfig) (*GRPCServer, error) {
 		secreportsv1pb.RegisterSecReportsServiceServer(server, secreportsv1.NotImplementedService{})
 
 		// Register OSS device trust service.
-		ossDeviceTrust := newOSSDeviceTrustService(cfg.AuthServer.bk)
+		ossDeviceTrust := newOSSDeviceTrustService(cfg.AuthServer.bk, cfg.AuthServer, cfg.Authorizer)
 		devicepb.RegisterDeviceTrustServiceServer(server, ossDeviceTrust)
 		// Wire device web token creation and device assertion for the auth server.
 		cfg.AuthServer.SetCreateDeviceWebTokenFunc(ossDeviceTrust.CreateDeviceWebToken)

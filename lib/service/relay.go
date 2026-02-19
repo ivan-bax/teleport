@@ -110,8 +110,11 @@ func (process *TeleportProcess) runRelayService() error {
 		ScopedRoleReader: accessPoint.ScopedRoleReader(),
 		LockWatcher:      lockWatcher,
 		Logger:           sublogger("authorizer"),
-		PermitCaching:    process.Config.CachePolicy.Enabled,
-		ScopesFeatures:   process.scopesFeatures,
+		DeviceAuthorization: authz.DeviceAuthorizationOpts{
+			DisableGlobalMode: true,
+		},
+		PermitCaching:  process.Config.CachePolicy.Enabled,
+		ScopesFeatures: process.scopesFeatures,
 	}
 
 	authorizer, err := authz.NewAuthorizer(authorizerOpts)

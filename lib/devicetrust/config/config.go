@@ -19,8 +19,6 @@
 package config
 
 import (
-	"github.com/gravitational/trace"
-
 	"github.com/gravitational/teleport/api/constants"
 	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/lib/modules"
@@ -29,12 +27,7 @@ import (
 // GetEffectiveMode returns the effective device trust mode, considering both
 // `dt` and the current modules.
 func GetEffectiveMode(dt *types.DeviceTrust, mod modules.Modules) string {
-	// OSS doesn't support device trust.
-	if mod.IsOSSBuild() {
-		return constants.DeviceTrustModeOff
-	}
-
-	// Enterprise defaults to "optional".
+	// Defaults to "optional".
 	if dt == nil || dt.Mode == "" {
 		return constants.DeviceTrustModeOptional
 	}
@@ -59,12 +52,6 @@ func GetEnforcementMode(dt *types.DeviceTrust, m modules.Modules) string {
 // This method exists to provide feedback to users about invalid configurations,
 // Teleport itself checks the features where appropriate and reacts accordingly.
 func ValidateConfigAgainstModules(dt *types.DeviceTrust, m modules.Modules) error {
-	switch {
-	case dt == nil || dt.Mode == "": // OK, always allowed.
-		return nil
-	case GetEffectiveMode(dt, m) != dt.Mode: // Mismatch means invalid OSS config.
-		return trace.BadParameter("device trust mode %q requires Teleport Enterprise", dt.Mode)
-	default:
-		return nil
-	}
+	// All modes are allowed in both OSS and Enterprise.
+	return nil
 }

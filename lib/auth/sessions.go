@@ -185,11 +185,6 @@ func (a *Server) calculateTrustedDeviceMode(
 ) (types.TrustedDeviceRequirement, error) {
 	const unspecified = types.TrustedDeviceRequirement_TRUSTED_DEVICE_REQUIREMENT_UNSPECIFIED
 
-	// Don't evaluate for OSS.
-	if !modules.GetModules().IsEnterpriseBuild() {
-		return unspecified, nil
-	}
-
 	ap, err := a.GetAuthPreference(ctx)
 	if err != nil {
 		return unspecified, trace.Wrap(err)

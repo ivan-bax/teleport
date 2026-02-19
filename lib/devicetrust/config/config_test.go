@@ -51,48 +51,27 @@ func TestValidateConfigAgainstModules(t *testing.T) {
 			deviceTrust: &types.DeviceTrust{},
 		},
 		{
-			name:      "OSS and Mode=off",
-			buildType: modules.BuildOSS,
-			deviceTrust: &types.DeviceTrust{
-				Mode: constants.DeviceTrustModeOff,
-			},
-		},
-		{
-			name:      "nok: OSS and Mode=optional",
-			buildType: modules.BuildOSS,
-			deviceTrust: &types.DeviceTrust{
-				Mode: constants.DeviceTrustModeOptional,
-			},
-			wantErr: true,
-		},
-		{
-			name:      "nok: OSS and Mode=required",
-			buildType: modules.BuildOSS,
-			deviceTrust: &types.DeviceTrust{
-				Mode: constants.DeviceTrustModeRequired,
-			},
-			wantErr: true,
-		},
-		{
 			name:        "Enterprise and nil config",
 			buildType:   modules.BuildEnterprise,
 			deviceTrust: nil,
 		},
 	}
 
-	// All modes are valid for Enterprise.
-	for _, mode := range []string{
-		"", // aka default config
-		constants.DeviceTrustModeOff,
-		constants.DeviceTrustModeOptional,
-		constants.DeviceTrustModeRequired} {
-		tests = append(tests, testCase{
-			name:      fmt.Sprintf("Enterprise and Mode=%v", mode),
-			buildType: modules.BuildEnterprise,
-			deviceTrust: &types.DeviceTrust{
-				Mode: mode,
-			},
-		})
+	// All modes are valid for both OSS and Enterprise.
+	for _, buildType := range []string{modules.BuildOSS, modules.BuildEnterprise} {
+		for _, mode := range []string{
+			"", // aka default config
+			constants.DeviceTrustModeOff,
+			constants.DeviceTrustModeOptional,
+			constants.DeviceTrustModeRequired} {
+			tests = append(tests, testCase{
+				name:      fmt.Sprintf("%s and Mode=%v", buildType, mode),
+				buildType: buildType,
+				deviceTrust: &types.DeviceTrust{
+					Mode: mode,
+				},
+			})
+		}
 	}
 
 	for _, test := range tests {
@@ -121,7 +100,7 @@ func TestGetEnforcementMode(t *testing.T) {
 		{
 			name:      "OSS default",
 			buildType: modules.BuildOSS,
-			want:      constants.DeviceTrustModeOff,
+			want:      constants.DeviceTrustModeOptional,
 		},
 		{
 			name:      "Enterprise default",

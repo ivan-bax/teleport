@@ -26,6 +26,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	devicepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/devicetrust/v1"
+	"github.com/gravitational/teleport/lib/defaults"
 	"github.com/gravitational/teleport/lib/web/app"
 )
 
@@ -158,4 +159,79 @@ func (h *Handler) getRedirectURL(host, unsafeRedirectURI string) (string, error)
 		return cleanPath + "?" + parsedURL.RawQuery, nil
 	}
 	return cleanPath, nil
+}
+
+// listDevicesHandle returns a paginated list of trusted devices.
+//
+// GET /webapi/devices/list?limit=N&startKey=TOKEN
+func (h *Handler) listDevicesHandle(_ http.ResponseWriter, r *http.Request, _ httprouter.Params, ctx *SessionContext) (interface{}, error) {
+	clt, err := ctx.GetClient()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	values := r.URL.Query()
+	limit, err := QueryLimitAsInt32(values, "limit", defaults.MaxIterationLimit)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	startKey := values.Get("startKey")
+
+	resp, err := clt.DevicesClient().ListDevices(r.Context(), &devicepb.ListDevicesRequest{
+		PageSize:  limit,
+		PageToken: startKey,
+	})
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	items := make([]deviceJSON, 0, len(resp.Devices))
+	for _, d := range resp.Devices {
+		items = append(items, deviceToJSON(d))
+	}
+
+	return &listResourcesWithoutCountGetResponse{
+		Items:    items,
+		StartKey: resp.NextPageToken,
+	}, nil
+}
+
+type deviceJSON struct {
+	ID           string `json:"id"`
+	AssetTag     string `json:"assetTag"`
+	OSType       string `json:"osType"`
+	EnrollStatus string `json:"enrollStatus"`
+	Owner        string `json:"owner"`
+}
+
+func deviceToJSON(d *devicepb.Device) deviceJSON {
+	var osType string
+	switch d.OsType {
+	case devicepb.OSType_OS_TYPE_LINUX:
+		osType = "Linux"
+	case devicepb.OSType_OS_TYPE_MACOS:
+		osType = "macOS"
+	case devicepb.OSType_OS_TYPE_WINDOWS:
+		osType = "Windows"
+	default:
+		osType = "unknown"
+	}
+
+	var enrollStatus string
+	switch d.EnrollStatus {
+	case devicepb.DeviceEnrollStatus_DEVICE_ENROLL_STATUS_ENROLLED:
+		enrollStatus = "enrolled"
+	case devicepb.DeviceEnrollStatus_DEVICE_ENROLL_STATUS_NOT_ENROLLED:
+		enrollStatus = "not enrolled"
+	default:
+		enrollStatus = "not enrolled"
+	}
+
+	return deviceJSON{
+		ID:           d.Id,
+		AssetTag:     d.AssetTag,
+		OSType:       osType,
+		EnrollStatus: enrollStatus,
+		Owner:        d.Owner,
+	}
 }

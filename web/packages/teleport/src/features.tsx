@@ -60,7 +60,7 @@ import { Bots } from './Bots';
 import { AddBots } from './Bots/Add';
 import { BotDetails } from './Bots/Details/BotDetails';
 import { Clusters } from './Clusters';
-import { DeviceTrustLocked } from './DeviceTrust';
+import { DeviceTrust, DeviceTrustLocked } from './DeviceTrust';
 import { Discover } from './Discover';
 import { Instances } from './Instances/Instances';
 import { Integrations } from './Integrations';
@@ -824,7 +824,7 @@ class FeatureDeviceTrust implements TeleportFeature {
     title: 'Trusted Devices',
     path: cfg.routes.deviceTrust,
     exact: true,
-    component: DeviceTrustLocked,
+    component: DeviceTrust,
   };
 
   hasAccess(flags: FeatureFlags) {

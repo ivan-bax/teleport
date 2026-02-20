@@ -12,6 +12,10 @@ auth_service:
   cluster_name: teleport.aivandrago.me
   tokens:
     - "proxy,node:test-insecure-token"
+  authentication:
+    second_factor: on
+    webauthn:
+      rp_id: teleport.aivandrago.me
 
 proxy_service:
   enabled: true

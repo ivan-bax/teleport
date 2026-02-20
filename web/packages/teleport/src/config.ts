@@ -363,6 +363,8 @@ const cfg = {
     githubConnectorPath: '/v1/webapi/github/connector/:name',
     samlConnectorsPath: '/v1/webapi/samlconnectors/:name?',
     trustedClustersPath: '/v1/webapi/trustedcluster/:name?',
+    trustedDevicesPath:
+      '/v1/webapi/devices/list?limit=:limit?&startKey=:startKey?',
     connectMyComputerLoginsPath: '/v1/webapi/connectmycomputer/logins',
 
     discoveryJoinToken: {
@@ -1349,6 +1351,13 @@ const cfg = {
 
   getTrustedClustersUrl(name?: string) {
     return generatePath(cfg.api.trustedClustersPath, { name });
+  },
+
+  getTrustedDevicesUrl(params?: { limit?: number; startKey?: string }) {
+    return generateResourcePath(cfg.api.trustedDevicesPath, {
+      limit: params?.limit || undefined,
+      startKey: params?.startKey || undefined,
+    });
   },
 
   getRoleUrl(

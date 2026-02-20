@@ -988,6 +988,7 @@ func (h *Handler) bindDefaultEndpoints() {
 	// Do not enforce bearer token for /webconfirm, it is called from outside the
 	// Web UI.
 	h.GET("/webapi/devices/webconfirm", h.WithSession(h.deviceWebConfirm))
+	h.GET("/webapi/devices/list", h.WithAuth(h.listDevicesHandle))
 
 	// trusted clusters
 	h.POST("/webapi/trustedclusters/validate", h.WithUnauthenticatedLimiter(h.validateTrustedCluster))

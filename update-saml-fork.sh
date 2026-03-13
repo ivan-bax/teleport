@@ -27,6 +27,9 @@ BRANCH_NAME="feature/saml-oss"
 
 # All custom commits to cherry-pick, in order (update these if you amend them)
 CUSTOM_COMMITS=(
+    # Documentation
+    "980d083c78"
+
     # SAML support
     "90b0f980f9"  # Enable SAML authentication in Teleport OSS
     "c22f30c513"  # Add test SAML configuration

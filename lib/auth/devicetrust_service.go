@@ -364,6 +364,12 @@ func (s *ossDeviceTrustService) EnrollDevice(stream devicepb.DeviceTrustService_
 	dev.UpdateTime = timestamppb.Now()
 	dev.EnrollStatus = devicepb.DeviceEnrollStatus_DEVICE_ENROLL_STATUS_ENROLLED
 	dev.Credential = cred
+
+	// Set the device owner to the user who performed the enrollment.
+	if authCtx, err := s.authorizer.Authorize(stream.Context()); err == nil {
+		dev.Owner = authCtx.User.GetName()
+	}
+
 	if err := s.putDevice(stream.Context(), dev); err != nil {
 		return trace.Wrap(err)
 	}

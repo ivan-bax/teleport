@@ -53,6 +53,7 @@ CUSTOM_COMMITS=(
     "9cb405d06f"  # Disable global device trust mode at proxy transport level
     "d58e2dfaa8"  # Add second factor and webauthn config to test SAML config
     "9c6d9a8897"  # Enable trusted devices UI in Teleport OSS
+    "249e4e1871"  # Fix device enrollment not setting owner field
 )
 
 RED='\033[0;31m'

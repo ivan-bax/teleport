@@ -5182,11 +5182,6 @@ func checkRoleFeatureSupport(role types.Role) error {
 	options := role.GetOptions()
 	allowReq, allowRev := role.GetAccessRequestConditions(types.Allow), role.GetAccessReviewConditions(types.Allow)
 
-	// source IP pinning doesn't have a dedicated feature flag,
-	// it is available to all enterprise users
-	if modules.GetModules().BuildType() != modules.BuildEnterprise && role.GetOptions().PinSourceIP {
-		return trace.AccessDenied("role option pin_source_ip is only available in enterprise subscriptions")
-	}
 
 	switch {
 	case !features.AccessControls && options.MaxSessions > 0:

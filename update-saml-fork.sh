@@ -27,33 +27,37 @@ BRANCH_NAME="feature/saml-oss"
 
 # All custom commits to cherry-pick, in order (update these if you amend them)
 CUSTOM_COMMITS=(
-    # Documentation
-    "980d083c78"
-
     # SAML support
-    "90b0f980f9"  # Enable SAML authentication in Teleport OSS
-    "c22f30c513"  # Add test SAML configuration
+    "bafedd0d0d"  # Enable SAML authentication in Teleport OSS
+    "fae973635b"  # Add test SAML configuration
 
     # CI/CD and build
-    "05a823f4da"  # Add script to rebase SAML patches onto new Teleport releases
-    "4a8b27b46f"  # Add CI/CD pipeline to build Docker image with SAML support
-    "536dc00686"  # Fix Dockerfile chmod outside RUN instruction
-    "e4ce867286"  # Fix version detection in CI workflow
-    "b77d9de254"  # Rebuild web UI from source instead of patching compiled bundle
-    "fa1f1a8322"  # Fix Dockerfile to build web UI from source correctly
-    "3d9d88fde7"  # Add binary releases and install script
-    "8c0dbac1f9"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "d295c5641d"  # Add script to rebase SAML patches onto new Teleport releases
+    "47f1db3585"  # Add CI/CD pipeline to build Docker image with SAML support
+    "ccbcb01035"  # Fix Dockerfile chmod outside RUN instruction
+    "e8c1e5fe1d"  # Fix version detection in CI workflow
+    "2e9cf2086d"  # Rebuild web UI from source instead of patching compiled bundle
+    "fcf3bf8f38"  # Fix Dockerfile to build web UI from source correctly
+    "0723de7d0f"  # Add binary releases and install script
+    "a9785bfe85"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "91482ff163"  # Fix release workflow version detection and binary extraction
 
     # Web UI
-    "8ad02f565d"  # Add SAML connector editor to web UI
+    "f75778af80"  # Add SAML connector editor to web UI
 
     # Device trust
-    "7b003cb0ca"  # Enable device trust registration in Teleport OSS
-    "af7cf0c341"  # Fix device authentication to return real augmented certificates
-    "9cb405d06f"  # Disable global device trust mode at proxy transport level
-    "d58e2dfaa8"  # Add second factor and webauthn config to test SAML config
-    "9c6d9a8897"  # Enable trusted devices UI in Teleport OSS
+    "a705b744f7"  # Enable device trust registration in Teleport OSS
+    "7848d3993e"  # Fix device authentication to return real augmented certificates
+    "e424c25af0"  # Disable global device trust mode at proxy transport level
+    "47566f2fb4"  # Add second factor and webauthn config to test SAML config
+    "d2094c259c"  # Enable trusted devices UI in Teleport OSS
     "249e4e1871"  # Fix device enrollment not setting owner field
+
+    # Documentation
+    "980d083c78"  # add documentation on releases
+
+    # Role options
+    "3883cf48aa"  # Remove enterprise restriction for pin_source_ip role option
 )
 
 RED='\033[0;31m'

@@ -52,7 +52,7 @@ import {
 } from 'teleport/Navigation/categories';
 import { ListSessionRecordingsRoute } from 'teleport/SessionRecordings/list/ListSessionRecordingsRoute';
 
-import { LockedAccessRequests } from './AccessRequests';
+import { AccessRequestsPage } from './AccessRequests';
 import { AccountPage } from './Account';
 import { AuditContainer as Audit } from './Audit';
 import { AuthConnectorsContainer as AuthConnectors } from './AuthConnectors';
@@ -90,9 +90,9 @@ class AccessRequests implements TeleportFeature {
 
   route = {
     title: 'Access Requests',
-    path: cfg.routes.accessRequest,
-    exact: true,
-    component: LockedAccessRequests,
+    path: cfg.routes.requests,
+    exact: false,
+    component: AccessRequestsPage,
   };
 
   hasAccess() {
@@ -102,9 +102,9 @@ class AccessRequests implements TeleportFeature {
   navigationItem = {
     title: NavTitle.AccessRequests,
     icon: ListAddCheck,
-    exact: true,
+    exact: false,
     getLink() {
-      return cfg.routes.accessRequest;
+      return cfg.routes.requests.replace(':requestId?', '');
     },
     searchableTags: ['access requests'],
   };

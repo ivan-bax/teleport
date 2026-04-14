@@ -912,6 +912,14 @@ func (h *Handler) bindDefaultEndpoints() {
 	h.GET("/webapi/sites/:site/auth/export", h.authExportPublic)
 	h.GET("/webapi/auth/export", h.authExportPublic)
 
+	// access request handlers
+	h.GET("/enterprise/accessrequest", h.WithAuth(h.getAccessRequests))
+	h.GET("/enterprise/accessrequest/:requestId", h.WithAuth(h.getAccessRequest))
+	h.POST("/enterprise/accessrequest", h.WithAuth(h.createAccessRequest))
+	h.DELETE("/enterprise/accessrequest/:requestId", h.WithAuth(h.deleteAccessRequest))
+	h.PUT("/enterprise/accessrequest/:requestId", h.WithAuth(h.updateAccessRequestState))
+	h.POST("/enterprise/accessrequest/:requestId/review", h.WithAuth(h.submitAccessReview))
+
 	// join token handlers
 	h.PUT("/webapi/tokens/yaml", h.WithAuth(h.updateTokenYAML))
 	// used for creating a new token

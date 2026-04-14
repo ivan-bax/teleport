@@ -1,14 +1,18 @@
 # Teleport SAML OSS Fork
 
-This is a fork of [gravitational/teleport](https://github.com/gravitational/teleport) that enables SAML authentication and device trust in the open-source edition.
+This is a fork of [gravitational/teleport](https://github.com/gravitational/teleport) that enables SAML authentication, device trust, and access requests in the open-source edition.
 
 ## What's changed
 
-This fork applies 16 custom commits on top of upstream releases:
+This fork applies custom commits on top of upstream releases:
 
 - **SAML support** — Enables SAML auth connectors in OSS (`lib/auth`, `lib/web`)
 - **SAML web UI** — Adds the SAML connector editor to the web interface
 - **Device trust** — Enables device trust registration, trusted devices UI, and fixes device authentication certificates
+- **Access requests** — Full access request lifecycle: create, review, approve/deny, assume roles via web UI and CLI
+- **Access request notifications** — Bell icon notifications for pending/approved/denied requests
+- **Auto-approval** — System auto-approver bot and access monitoring rule watcher for automatic reviews
+- **Slack plugin** — Standalone `teleport-slack` binary for Slack access request notifications (built in CI)
 - **CI/CD pipeline** — GitHub Actions workflow to build Docker images and binary releases
 - **Dockerfile** — Multi-stage build (Node.js/Rust for web UI + Go for binaries)
 - **Install script** — Curl-friendly installer with checksums and systemd service
@@ -84,6 +88,112 @@ The commit SHAs are hardcoded in `update-saml-fork.sh` in the `CUSTOM_COMMITS` a
 2. Copy the new SHA
 3. Update the `CUSTOM_COMMITS` array in `update-saml-fork.sh`
 4. Commit the script update (and add *that* SHA to the array too)
+
+## Slack Access Request Plugin
+
+The `teleport-slack` binary sends Slack messages when access requests are created, and optionally allows approval/denial from Slack.
+
+### Build
+
+```bash
+go build -o build/teleport-slack ./integrations/access/slack/cmd/teleport-slack/
+```
+
+The CI/CD pipeline also builds this binary and includes it in GitHub Releases.
+
+### Setup
+
+1. **Create a Slack App** at https://api.slack.com/apps:
+   - Bot Token Scopes: `chat:write`, `users:read`, `users:read.email`
+   - Install to your workspace and copy the Bot User OAuth Token (`xoxb-...`)
+   - Invite the bot to your notification channel
+
+2. **Create the plugin role and user** on your Teleport server:
+
+   ```bash
+   tctl create -f /dev/stdin <<'EOF'
+   kind: role
+   version: v7
+   metadata:
+     name: access-plugin
+   spec:
+     allow:
+       rules:
+         - resources: ['access_request']
+           verbs: ['list', 'read', 'update']
+         - resources: ['access_monitoring_rule']
+           verbs: ['list', 'read']
+       review_requests:
+         roles: ['*']
+   EOF
+
+   tctl users add slack-plugin --roles=access-plugin
+   tctl auth sign --format=file --user=slack-plugin --out=/etc/teleport/slack-identity --ttl=8760h
+   ```
+
+3. **Create the config file** at `/etc/teleport/slack-plugin.toml`:
+
+   ```toml
+   [teleport]
+   addr = "localhost:3025"
+   identity = "/etc/teleport/slack-identity"
+
+   [slack]
+   token = "xoxb-YOUR-TOKEN-HERE"
+
+   [role_to_recipients]
+   "*" = ["#access-requests"]
+
+   [log]
+   output = "stderr"
+   severity = "INFO"
+   ```
+
+4. **Run the plugin**:
+
+   ```bash
+   teleport-slack start --config=/etc/teleport/slack-plugin.toml
+   ```
+
+   Or create a systemd service:
+
+   ```ini
+   [Unit]
+   Description=Teleport Slack Plugin
+   After=teleport.service
+
+   [Service]
+   Type=simple
+   ExecStart=/usr/local/bin/teleport-slack start --config=/etc/teleport/slack-plugin.toml
+   Restart=on-failure
+   RestartSec=5
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+## Auto-Approval Rules
+
+Access requests can be auto-approved using access monitoring rules:
+
+```bash
+tctl create -f /dev/stdin <<'EOF'
+kind: access_monitoring_rule
+version: v1
+metadata:
+  name: auto-approve-editor
+spec:
+  subjects:
+    - access_request
+  condition: 'access_request.spec.roles.contains("editor")'
+  desired_state: reviewed
+  automatic_review:
+    integration: builtin
+    decision: APPROVED
+EOF
+```
+
+The `@teleport-access-approval-bot` user (created automatically) submits the review. Change `decision` to `DENIED` to auto-deny.
 
 ## Docker
 

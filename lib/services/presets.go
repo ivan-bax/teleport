@@ -39,13 +39,8 @@ import (
 )
 
 // NewSystemAutomaticAccessApproverRole creates a new Role that is allowed to
-// approve any Access Request. This is restricted to Teleport Enterprise, and
-// returns nil in non-Enterproise builds.
+// approve any Access Request.
 func NewSystemAutomaticAccessApproverRole(buildType string) types.Role {
-	if buildType != modules.BuildEnterprise {
-		return nil
-	}
-
 	role := &types.RoleV6{
 		Kind:    types.KindRole,
 		Version: types.V7,
@@ -80,10 +75,6 @@ func NewSystemAutomaticAccessApproverRole(buildType string) types.Role {
 //
 // TODO(tcsc): Implement/enforce above restrictions on this user
 func NewSystemAutomaticAccessBotUser(buildType string) types.User {
-	if buildType != modules.BuildEnterprise {
-		return nil
-	}
-
 	user := &types.UserV2{
 		Kind:    types.KindUser,
 		Version: types.V2,

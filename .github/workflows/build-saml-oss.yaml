@@ -82,12 +82,12 @@ jobs:
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_short }}
           docker create --name extract ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version_short }}
           mkdir -p dist
-          for bin in teleport tctl tsh tbot; do
+          for bin in teleport tctl tsh tbot teleport-slack; do
             docker cp extract:/usr/local/bin/$bin dist/$bin
           done
           docker rm extract
           cd dist
-          tar czf teleport-saml-oss-${{ steps.version.outputs.version }}-linux-amd64.tar.gz teleport tctl tsh tbot
+          tar czf teleport-saml-oss-${{ steps.version.outputs.version }}-linux-amd64.tar.gz teleport tctl tsh tbot teleport-slack
           sha256sum teleport-saml-oss-${{ steps.version.outputs.version }}-linux-amd64.tar.gz > checksums.txt
 
       - name: Create or update GitHub Release
@@ -113,6 +113,7 @@ jobs:
             - `tctl` — Admin CLI
             - `tsh` — User CLI
             - `tbot` — Machine ID bot
+            - `teleport-slack` — Slack access request plugin
           files: |
             dist/teleport-saml-oss-${{ steps.version.outputs.version }}-linux-amd64.tar.gz
             dist/checksums.txt

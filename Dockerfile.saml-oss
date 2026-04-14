@@ -82,7 +82,9 @@ RUN CGO_ENABLED=1 go build -tags "webassets_embed" -ldflags="-s -w" \
     CGO_ENABLED=1 go build -ldflags="-s -w" \
         -o /go/bin/tsh ./tool/tsh && \
     CGO_ENABLED=1 go build -ldflags="-s -w" \
-        -o /go/bin/tbot ./tool/tbot
+        -o /go/bin/tbot ./tool/tbot && \
+    CGO_ENABLED=0 go build -ldflags="-s -w" \
+        -o /go/bin/teleport-slack ./integrations/access/slack/cmd/teleport-slack
 
 # ----- Runtime stage -----
 FROM debian:12-slim
@@ -98,6 +100,7 @@ COPY --from=builder /go/bin/teleport /usr/local/bin/teleport
 COPY --from=builder /go/bin/tctl /usr/local/bin/tctl
 COPY --from=builder /go/bin/tsh /usr/local/bin/tsh
 COPY --from=builder /go/bin/tbot /usr/local/bin/tbot
+COPY --from=builder /go/bin/teleport-slack /usr/local/bin/teleport-slack
 
 RUN mkdir -p /etc/teleport /var/lib/teleport
 

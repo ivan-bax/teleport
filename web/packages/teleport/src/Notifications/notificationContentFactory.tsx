@@ -25,6 +25,7 @@ import {
   NotificationSubKind,
   Notification as NotificationType,
 } from 'teleport/services/notifications';
+import cfg from 'teleport/config';
 import { Label } from 'teleport/types';
 
 /**
@@ -57,6 +58,54 @@ export function notificationContentFactory({
         textContent: notification.textContent,
         type: 'warning',
         icon: Icons.Notification,
+      };
+      break;
+    }
+
+    case NotificationSubKind.AccessRequestApproved: {
+      const requestId = getLabelValue(notification.labels, 'request-id');
+      notificationContent = {
+        kind: 'redirect',
+        title: notification.title,
+        redirectRoute: cfg.routes.requests.replace(':requestId?', requestId),
+        type: 'success',
+        icon: Icons.Checks,
+      };
+      break;
+    }
+
+    case NotificationSubKind.AccessRequestDenied: {
+      const requestId = getLabelValue(notification.labels, 'request-id');
+      notificationContent = {
+        kind: 'redirect',
+        title: notification.title,
+        redirectRoute: cfg.routes.requests.replace(':requestId?', requestId),
+        type: 'failure',
+        icon: Icons.Cross,
+      };
+      break;
+    }
+
+    case NotificationSubKind.AccessRequestPending: {
+      const requestId = getLabelValue(notification.labels, 'request-id');
+      notificationContent = {
+        kind: 'redirect',
+        title: notification.title,
+        redirectRoute: cfg.routes.requests.replace(':requestId?', requestId),
+        type: 'informational',
+        icon: Icons.ListAddCheck,
+      };
+      break;
+    }
+
+    case NotificationSubKind.AccessRequestPromoted: {
+      const requestId = getLabelValue(notification.labels, 'request-id');
+      notificationContent = {
+        kind: 'redirect',
+        title: notification.title,
+        redirectRoute: cfg.routes.requests.replace(':requestId?', requestId),
+        type: 'success-alt',
+        icon: Icons.ListAddCheck,
       };
       break;
     }

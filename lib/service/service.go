@@ -2580,6 +2580,16 @@ func (process *TeleportProcess) initAuthService() error {
 	}
 	authServer.SetGlobalNotificationCache(globalNotificationCache)
 
+	// Start access review watcher to auto-approve/deny access requests
+	// based on access monitoring rules.
+	if err := auth.StartAccessReviewWatcher(process.ExitContext(), auth.AccessReviewWatcherConfig{
+		Logger:       process.logger.With(teleport.ComponentKey, "access-review"),
+		Events:       authServer.Services,
+		ReviewClient: authServer,
+	}); err != nil {
+		return trace.Wrap(err)
+	}
+
 	headlessAuthenticationWatcher, err := local.NewHeadlessAuthenticationWatcher(process.ExitContext(), local.HeadlessAuthenticationWatcherConfig{
 		Backend: b,
 	})

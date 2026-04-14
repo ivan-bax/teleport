@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# update-saml-fork.sh — Rebase SAML OSS patches onto a new Teleport release
+# update-saml-fork.sh — Rebase OSS customization patches onto a new Teleport release
 #
 # Usage:
 #   ./update-saml-fork.sh v18.7.0
@@ -9,30 +9,59 @@
 # What it does:
 #   1. Fetches the latest tags from upstream (gravitational/teleport)
 #   2. Creates a new branch from the target release tag
-#   3. Cherry-picks the SAML OSS commits onto it
-#   4. Rebuilds the teleport binary with patched web assets
-#   5. Pushes the updated branch to your fork
+#   3. Cherry-picks all custom commits (SAML, device trust, CI, web UI)
+#   4. Pushes the updated branch to your fork
 #
 # Prerequisites:
-#   - Go installed at /usr/local/go/bin/go
 #   - git remotes: origin=gravitational/teleport, myfork=ivan-bax/teleport
-#   - brotli tool helper at /tmp/brotli_tool.go (or install brotli CLI)
 #
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+cd /home/ivan/personal-projects/teleport
 
-GO_BIN="${GO_BIN:-/usr/local/go/bin/go}"
 FORK_REMOTE="${FORK_REMOTE:-myfork}"
 UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-origin}"
 BRANCH_NAME="feature/saml-oss"
 
-# The SAML commits to cherry-pick (update these if you amend them)
-SAML_COMMITS=(
-    "90b0f980f9"  # Enable SAML authentication in Teleport OSS
-    "c22f30c513"  # Add test SAML configuration
+# All custom commits to cherry-pick, in order (update these if you amend them)
+CUSTOM_COMMITS=(
+    # SAML support
+    "bafedd0d0d"  # Enable SAML authentication in Teleport OSS
+    "fae973635b"  # Add test SAML configuration
+
+    # CI/CD and build
+    "d295c5641d"  # Add script to rebase SAML patches onto new Teleport releases
+    "47f1db3585"  # Add CI/CD pipeline to build Docker image with SAML support
+    "ccbcb01035"  # Fix Dockerfile chmod outside RUN instruction
+    "e8c1e5fe1d"  # Fix version detection in CI workflow
+    "2e9cf2086d"  # Rebuild web UI from source instead of patching compiled bundle
+    "fcf3bf8f38"  # Fix Dockerfile to build web UI from source correctly
+    "0723de7d0f"  # Add binary releases and install script
+    "a9785bfe85"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "91482ff163"  # Fix release workflow version detection and binary extraction
+
+    # Web UI
+    "f75778af80"  # Add SAML connector editor to web UI
+
+    # Device trust
+    "a705b744f7"  # Enable device trust registration in Teleport OSS
+    "7848d3993e"  # Fix device authentication to return real augmented certificates
+    "e424c25af0"  # Disable global device trust mode at proxy transport level
+    "47566f2fb4"  # Add second factor and webauthn config to test SAML config
+    "d2094c259c"  # Enable trusted devices UI in Teleport OSS
+    "249e4e1871"  # Fix device enrollment not setting owner field
+
+    # Documentation
+    "980d083c78"  # add documentation on releases
+
+    # Role options
+    "3883cf48aa"  # Remove enterprise restriction for pin_source_ip role option
+
+    # Access requests
+    "ef53a72c49"  # Enable access requests feature in Teleport OSS
+    "d084013ebc"  # add more views to access request view
 )
 
 RED='\033[0;31m'
@@ -77,7 +106,7 @@ if ! git rev-parse "$TARGET_TAG" >/dev/null 2>&1; then
 fi
 
 # --- Get current version for comparison ---
-CURRENT_BASE=$(git log --oneline "$BRANCH_NAME" | grep "^[a-f0-9]* Release " | head -1 | sed 's/.*Release //' | sed 's/ .*//')
+CURRENT_BASE=$(git log --oneline "$BRANCH_NAME" | grep "^[a-f0-9]* Release " | head -1 | sed 's/.*Release //' | sed 's/ .*//' || true)
 info "Current base: ${CURRENT_BASE:-unknown}"
 info "Target base:  $TARGET_TAG"
 
@@ -89,10 +118,10 @@ TEMP_BRANCH="${BRANCH_NAME}-${TARGET_TAG}"
 info "Creating branch $TEMP_BRANCH from $TARGET_TAG..."
 git checkout -b "$TEMP_BRANCH" "$TARGET_TAG"
 
-# --- Cherry-pick SAML commits ---
-info "Cherry-picking SAML OSS commits..."
+# --- Cherry-pick custom commits ---
+info "Cherry-picking ${#CUSTOM_COMMITS[@]} custom commits..."
 FAILED=0
-for commit in "${SAML_COMMITS[@]}"; do
+for commit in "${CUSTOM_COMMITS[@]}"; do
     SUBJECT=$(git log --oneline -1 "$commit" 2>/dev/null | cut -d' ' -f2-)
     info "  Applying: $SUBJECT"
     if ! git cherry-pick "$commit" --no-edit 2>/dev/null; then
@@ -121,28 +150,6 @@ OLD_BRANCH="${BRANCH_NAME}-old-$(date +%Y%m%d)"
 git branch -m "$BRANCH_NAME" "$OLD_BRANCH" 2>/dev/null || true
 git branch -m "$TEMP_BRANCH" "$BRANCH_NAME"
 
-# --- Build (optional) ---
-read -rp "Build the teleport binary now? [Y/n] " build_confirm
-if [[ ! "$build_confirm" =~ ^[Nn] ]]; then
-    info "Building teleport binary..."
-
-    # Patch web assets if brotli tool is available
-    if [[ -f /tmp/brotli_tool.go ]] && [[ -f /tmp/patch_app.go ]] && [[ -f /tmp/patch_editor.go ]]; then
-        info "Patching web assets..."
-        PATH="/usr/local/go/bin:$PATH" "$GO_BIN" run /tmp/brotli_tool.go d webassets/teleport/app/app.js.br /tmp/app.js
-        PATH="/usr/local/go/bin:$PATH" "$GO_BIN" run /tmp/patch_app.go
-        PATH="/usr/local/go/bin:$PATH" "$GO_BIN" run /tmp/patch_editor.go
-        PATH="/usr/local/go/bin:$PATH" "$GO_BIN" run /tmp/brotli_tool.go c /tmp/app_patched2.js webassets/teleport/app/app.js.br
-        info "Web assets patched."
-    else
-        warn "Brotli/patch tools not found in /tmp. Skipping web asset patching."
-        warn "The binary will work but the Auth Connectors management UI won't show SAML connectors."
-    fi
-
-    PATH="/usr/local/go/bin:$PATH" CGO_ENABLED=1 "$GO_BIN" build -tags "webassets_embed" -o build/teleport ./tool/teleport
-    info "Binary built: build/teleport"
-fi
-
 # --- Push ---
 read -rp "Push $BRANCH_NAME to $FORK_REMOTE? [Y/n] " push_confirm
 if [[ ! "$push_confirm" =~ ^[Nn] ]]; then
@@ -161,7 +168,7 @@ fi
 
 echo ""
 info "Done! $BRANCH_NAME is now based on $TARGET_TAG"
-info "SAML commits:"
-for commit in "${SAML_COMMITS[@]}"; do
+info "Custom commits applied (${#CUSTOM_COMMITS[@]}):"
+for commit in "${CUSTOM_COMMITS[@]}"; do
     echo "  $(git log --oneline -1 "$commit")"
 done

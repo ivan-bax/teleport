@@ -17,3 +17,4 @@
  */
 
 export { LockedAccessRequests } from './LockedAccessRequests/LockedAccessRequests';
+export { AccessRequestsPage } from './AccessRequestsPage';

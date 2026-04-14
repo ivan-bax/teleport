@@ -58,6 +58,9 @@ CUSTOM_COMMITS=(
 
     # Role options
     "3883cf48aa"  # Remove enterprise restriction for pin_source_ip role option
+
+    # Access requests
+    "79305995b2"  # Enable access requests feature in Teleport OSS
 )
 
 RED='\033[0;31m'

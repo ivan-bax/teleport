@@ -27,12 +27,17 @@ import {
   ButtonPrimary,
   ButtonSecondary,
   Flex,
+  H1,
   Indicator,
+  Input,
   Label,
   Text,
+  TextArea,
 } from 'design';
 import Table, { Cell } from 'design/DataTable';
 import { displayDateTime } from 'design/datetime';
+import { TabBorder, TabContainer, TabsContainer } from 'design/Tabs/Tabs';
+import { useSlidingBottomBorderTabs } from 'design/Tabs/useSlidingBottomBorderTabs';
 import {
   renderIdCell,
   renderStatusCell,
@@ -47,6 +52,12 @@ import {
 import { requestMatcher } from 'shared/components/AccessRequests/NewRequest/matcher';
 import { useAsync, makeEmptyAttempt, Attempt } from 'shared/hooks/useAsync';
 import { AccessRequest, canAssumeNow } from 'shared/services/accessRequests';
+import Dialog, {
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from 'design/Dialog';
 
 import cfg from 'teleport/config';
 import { useTeleport } from 'teleport';
@@ -55,8 +66,19 @@ import {
   fetchAccessRequest,
   deleteAccessRequest as deleteAccessRequestApi,
   reviewAccessRequest,
+  createAccessRequest,
 } from 'teleport/services/accessRequests/accessRequests';
 import session from 'teleport/services/websession';
+
+type TabFilter = 'all' | 'mine' | 'needs-review' | 'reviewed';
+
+const TAB_IDS: TabFilter[] = ['all', 'mine', 'needs-review', 'reviewed'];
+const TAB_LABELS: Record<TabFilter, string> = {
+  all: 'All Requests',
+  mine: 'My Requests',
+  'needs-review': 'Needs Review',
+  reviewed: 'Reviewed',
+};
 
 export function AccessRequestsPage() {
   const { requestId } = useParams<{ requestId?: string }>();
@@ -79,6 +101,11 @@ function RequestListView() {
   const history = useHistory();
   const username = ctx.storeUser.state?.username;
   const accessRequestId = ctx.storeUser.state?.accessRequestId;
+
+  const [activeTab, setActiveTab] = useState<TabFilter>('all');
+  const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
+
+  const { borderRef, parentRef } = useSlidingBottomBorderTabs({ activeTab });
 
   const [fetchAttempt, fetchRequests] = useAsync(fetchAccessRequests);
   const [assumeAttempt, runAssumeRole] = useAsync(
@@ -116,6 +143,28 @@ function RequestListView() {
     };
   }
 
+  function filterRequests(requests: AccessRequest[]): AccessRequest[] {
+    switch (activeTab) {
+      case 'mine':
+        return requests.filter(r => r.user === username);
+      case 'needs-review':
+        return requests.filter(r => {
+          if (r.user === username) return false;
+          const reviewed = r.reviews.find(rev => rev.author === username);
+          return reviewed ? reviewed.state === 'PENDING' : r.state === 'PENDING';
+        });
+      case 'reviewed':
+        return requests.filter(r =>
+          r.reviews.some(rev => rev.author === username)
+        );
+      default:
+        return requests;
+    }
+  }
+
+  const allRequests = fetchAttempt.data || [];
+  const filteredRequests = filterRequests(allRequests);
+
   return (
     <Layout mx="auto" px={5} pt={3} height="100%">
       {fetchAttempt.status === 'error' && (
@@ -128,18 +177,34 @@ function RequestListView() {
           Could not assume the role
         </Alert>
       )}
-      <Flex justifyContent="end" pb={4}>
+
+      <Flex justifyContent="space-between" alignItems="center" mb={3}>
+        <H1>Access Requests</H1>
         <ButtonPrimary
-          ml={2}
           size="small"
-          onClick={() => fetchRequests()}
-          disabled={fetchAttempt.status === 'processing'}
+          onClick={() => setShowNewRequestDialog(true)}
         >
-          Refresh
+          New Access Request
         </ButtonPrimary>
       </Flex>
+
+      <StyledTabsContainer ref={parentRef} withBottomBorder mb={3} role="tablist">
+        {TAB_IDS.map(tabId => (
+          <StyledTabContainer
+            key={tabId}
+            data-tab-id={tabId}
+            selected={activeTab === tabId}
+            onClick={() => setActiveTab(tabId)}
+            role="tab"
+          >
+            {TAB_LABELS[tabId]}
+          </StyledTabContainer>
+        ))}
+        <TabBorder ref={borderRef} />
+      </StyledTabsContainer>
+
       <Table
-        data={fetchAttempt.data || []}
+        data={filteredRequests}
         columns={[
           {
             key: 'id',
@@ -177,6 +242,14 @@ function RequestListView() {
             ),
           },
           {
+            key: 'assumeStartTime',
+            headerText: 'Available',
+            isSortable: true,
+            render: ({ assumeStartTimeDuration }) => (
+              <Cell>{assumeStartTimeDuration}</Cell>
+            ),
+          },
+          {
             key: 'expires',
             headerText: 'Expires',
             isSortable: true,
@@ -208,7 +281,88 @@ function RequestListView() {
         initialSort={{ key: 'created', dir: 'DESC' }}
         customSearchMatchers={[requestMatcher]}
       />
+
+      {showNewRequestDialog && (
+        <NewAccessRequestDialog
+          onClose={() => setShowNewRequestDialog(false)}
+          onCreated={() => {
+            setShowNewRequestDialog(false);
+            fetchRequests();
+          }}
+        />
+      )}
     </Layout>
+  );
+}
+
+function NewAccessRequestDialog({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [roles, setRoles] = useState('');
+  const [reason, setReason] = useState('');
+  const [createAttempt, runCreate] = useAsync(
+    useCallback(async () => {
+      const roleList = roles
+        .split(',')
+        .map(r => r.trim())
+        .filter(Boolean);
+      if (roleList.length === 0) {
+        throw new Error('At least one role is required');
+      }
+      await createAccessRequest({ roles: roleList, reason: reason || undefined });
+      onCreated();
+    }, [roles, reason, onCreated])
+  );
+
+  return (
+    <Dialog open={true} onClose={onClose}>
+      <DialogHeader>
+        <DialogTitle>New Access Request</DialogTitle>
+      </DialogHeader>
+      <DialogContent minWidth="500px">
+        {createAttempt.status === 'error' && (
+          <Alert kind="danger" mb={3}>
+            {createAttempt.statusText}
+          </Alert>
+        )}
+        <Box mb={3}>
+          <Text mb={1} bold>
+            Roles (comma-separated)
+          </Text>
+          <Input
+            value={roles}
+            onChange={e => setRoles(e.target.value)}
+            placeholder="e.g. editor, access"
+          />
+        </Box>
+        <Box mb={3}>
+          <Text mb={1} bold>
+            Reason (optional)
+          </Text>
+          <TextArea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="Why do you need this access?"
+            rows={3}
+            resizable={true}
+          />
+        </Box>
+      </DialogContent>
+      <DialogFooter>
+        <ButtonPrimary
+          mr={3}
+          onClick={() => runCreate()}
+          disabled={createAttempt.status === 'processing' || !roles.trim()}
+        >
+          {createAttempt.status === 'processing' ? 'Submitting...' : 'Submit Request'}
+        </ButtonPrimary>
+        <ButtonSecondary onClick={onClose}>Cancel</ButtonSecondary>
+      </DialogFooter>
+    </Dialog>
   );
 }
 
@@ -576,4 +730,14 @@ const Layout = styled(Box)`
     content: ' ';
     padding-bottom: 24px;
   }
+`;
+
+const StyledTabsContainer = styled(TabsContainer)`
+  gap: 0;
+`;
+
+const StyledTabContainer = styled(TabContainer)`
+  padding: ${p => p.theme.space[2]}px ${p => p.theme.space[3]}px;
+  font-weight: ${p => p.theme.fontWeights.medium};
+  font-size: ${p => p.theme.fontSizes[2]}px;
 `;

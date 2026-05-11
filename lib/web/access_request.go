@@ -238,7 +238,7 @@ func (h *Handler) createAccessRequest(w http.ResponseWriter, r *http.Request, p 
 		"", // empty name, server generates UUID
 		sctx.GetUser(),
 		req.Roles,
-		resourceIDs,
+		types.ResourceIDsToResourceAccessIDs(resourceIDs),
 	)
 	if err != nil {
 		return nil, trace.Wrap(err)

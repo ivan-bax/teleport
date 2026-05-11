@@ -2,9 +2,10 @@ name: Unit Tests (Integrations)
 run-name: Unit Tests (Integrations) - ${{ github.run_id }} - @${{ github.actor }}
 
 on:
+  push:
+    branches:
+      - feature/saml-oss
   pull_request:
-
-  merge_group:
 
 jobs:
   changes:

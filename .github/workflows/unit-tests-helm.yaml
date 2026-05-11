@@ -2,8 +2,10 @@ name: Unit Tests (Helm)
 run-name: Unit Tests (Helm) - ${{ github.run_id }} - @${{ github.actor }}
 
 on:
+  push:
+    branches:
+      - feature/saml-oss
   pull_request:
-  merge_group:
 
 jobs:
   changes:

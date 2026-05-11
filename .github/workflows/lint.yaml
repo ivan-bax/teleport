@@ -1,7 +1,9 @@
 name: Lint
 on:
+  push:
+    branches:
+      - feature/saml-oss
   pull_request:
-  merge_group:
 env:
   GOFLAGS: '-buildvcs=false'
   GOEXPERIMENT: 'synctest'

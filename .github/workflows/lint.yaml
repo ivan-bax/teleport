@@ -1,7 +1,13 @@
 name: Lint
 on:
+  push:
+    branches:
+      - feature/saml-oss
   pull_request:
-  merge_group:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   GOFLAGS: '-buildvcs=false'
 

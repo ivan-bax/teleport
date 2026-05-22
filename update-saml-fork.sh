@@ -26,42 +26,47 @@ UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-origin}"
 BRANCH_NAME="feature/saml-oss"
 
 # All custom commits to cherry-pick, in order (update these if you amend them)
+# SHAs below are from feature/saml-oss after the v18.8.1 rebase (2026-05-22).
 CUSTOM_COMMITS=(
     # SAML support
-    "bafedd0d0d"  # Enable SAML authentication in Teleport OSS
-    "fae973635b"  # Add test SAML configuration
+    "1be9ecf5566"  # Enable SAML authentication in Teleport OSS
+    "7d7006ea056"  # Add test SAML configuration
 
     # CI/CD and build
-    "d295c5641d"  # Add script to rebase SAML patches onto new Teleport releases
-    "47f1db3585"  # Add CI/CD pipeline to build Docker image with SAML support
-    "ccbcb01035"  # Fix Dockerfile chmod outside RUN instruction
-    "e8c1e5fe1d"  # Fix version detection in CI workflow
-    "2e9cf2086d"  # Rebuild web UI from source instead of patching compiled bundle
-    "fcf3bf8f38"  # Fix Dockerfile to build web UI from source correctly
-    "0723de7d0f"  # Add binary releases and install script
-    "a9785bfe85"  # Fix CI disk space: free runner space and strip Go debug symbols
-    "91482ff163"  # Fix release workflow version detection and binary extraction
+    "254bb2e6481"  # Add script to rebase SAML patches onto new Teleport releases
+    "d08e45236e8"  # Add CI/CD pipeline to build Docker image with SAML support
+    "60ae95862b9"  # Fix Dockerfile chmod outside RUN instruction
+    "44e7b6f944f"  # Fix version detection in CI workflow
+    "77e473fc0f7"  # Rebuild web UI from source instead of patching compiled bundle
+    "ce5075a5597"  # Fix Dockerfile to build web UI from source correctly
+    "1aba7f56524"  # Add binary releases and install script
+    "6ebfe2c3997"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "f474c927a83"  # Fix release workflow version detection and binary extraction
 
     # Web UI
-    "f75778af80"  # Add SAML connector editor to web UI
+    "ac090da58a6"  # Add SAML connector editor to web UI
 
     # Device trust
-    "a705b744f7"  # Enable device trust registration in Teleport OSS
-    "7848d3993e"  # Fix device authentication to return real augmented certificates
-    "e424c25af0"  # Disable global device trust mode at proxy transport level
-    "47566f2fb4"  # Add second factor and webauthn config to test SAML config
-    "d2094c259c"  # Enable trusted devices UI in Teleport OSS
-    "249e4e1871"  # Fix device enrollment not setting owner field
+    "1570838ac11"  # Enable device trust registration in Teleport OSS
+    "34b70eedd15"  # Fix device authentication to return real augmented certificates
+    "c982a7abd86"  # Disable global device trust mode at proxy transport level
+    "37aff4e20a2"  # Add second factor and webauthn config to test SAML config
+    "a79c6699ba1"  # Enable trusted devices UI in Teleport OSS
+    "0125ee7030a"  # Fix device enrollment not setting owner field
 
     # Documentation
-    "980d083c78"  # add documentation on releases
+    "ddf159914ff"  # add documentation on releases
 
     # Role options
-    "3883cf48aa"  # Remove enterprise restriction for pin_source_ip role option
+    "41214210af7"  # Remove enterprise restriction for pin_source_ip role option
 
     # Access requests
-    "ef53a72c49"  # Enable access requests feature in Teleport OSS
-    "d084013ebc"  # add more views to access request view
+    "815036b73fc"  # Enable access requests feature in Teleport OSS
+    "091318f2c41"  # add more views to access request view
+    "050c760488f"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
+
+    # Fork-specific CI cleanup
+    "5205fd035b4"  # remove unused ci/cd and update to make work for this fork
 )
 
 RED='\033[0;31m'

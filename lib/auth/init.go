@@ -391,6 +391,9 @@ type InitConfig struct {
 	// GitServers manages git servers.
 	GitServers services.GitServers
 
+	// LoginRules manages login rules.
+	LoginRules services.LoginRules
+
 	// StableUNIXUsers handles the storage for stable UNIX users.
 	StableUNIXUsers services.StableUNIXUsersInternal
 

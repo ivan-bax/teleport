@@ -1,6 +1,6 @@
 # Teleport SAML OSS Fork
 
-This is a fork of [gravitational/teleport](https://github.com/gravitational/teleport) that enables SAML authentication, device trust, and access requests in the open-source edition.
+This is a fork of [gravitational/teleport](https://github.com/gravitational/teleport) that enables SAML authentication, device trust, access requests, and login rules in the open-source edition.
 
 ## What's changed
 
@@ -12,6 +12,7 @@ This fork applies custom commits on top of upstream releases:
 - **Access requests** — Full access request lifecycle: create, review, approve/deny, assume roles via web UI and CLI
 - **Access request notifications** — Bell icon notifications for pending/approved/denied requests
 - **Auto-approval** — System auto-approver bot and access monitoring rule watcher for automatic reviews
+- **Login rules** — Transform or filter SSO user traits at login time via `login_rule` resources (`lib/auth/loginrule`, `lib/services/local`)
 - **Slack plugin** — Standalone `teleport-slack` binary for Slack access request notifications (built in CI)
 - **CI/CD pipeline** — GitHub Actions workflow to build Docker images and binary releases
 - **Dockerfile** — Multi-stage build (Node.js/Rust for web UI + Go for binaries)
@@ -194,6 +195,69 @@ EOF
 ```
 
 The `@teleport-access-approval-bot` user (created automatically) submits the review. Change `decision` to `DENIED` to auto-deny.
+
+## Login Rules
+
+Login rules transform or filter the traits a user receives from an SSO identity
+provider (SAML/GitHub/OIDC) at login time. Upstream this is Enterprise-only; this
+fork implements the auth-server side (storage, the gRPC CRUD service, and the
+evaluator) so `login_rule` resources work in OSS.
+
+Manage rules with `tctl`:
+
+```bash
+tctl create -f login-rule.yaml   # create (errors if it exists)
+tctl get login_rules             # list all rules
+tctl rm login_rule/<name>        # delete
+```
+
+A rule sets **exactly one** of `traits_map` or `traits_expression`. Rules are
+applied in ascending `priority` order, and each rule's output traits feed into
+the next. Incoming IdP traits are exposed to expressions as `external`.
+
+`traits_map` fully defines the output trait set (unreferenced traits are
+dropped). Use `external.<trait>` to carry values forward:
+
+```yaml
+kind: login_rule
+version: v1
+metadata:
+  name: set-groups
+spec:
+  priority: 0
+  traits_map:
+    groups:
+      - "external.groups"   # keep IdP-provided groups
+      - everyone            # add a literal value
+    logins:
+      - "external.username"
+```
+
+`traits_expression` mutates the `external` dict in place (helpers include
+`add_values`, `put`, `remove`):
+
+```yaml
+kind: login_rule
+version: v1
+metadata:
+  name: add-default-group
+spec:
+  priority: 1
+  traits_expression: external.add_values("groups", "everyone")
+```
+
+Test rules against sample traits without saving them (optionally combining with
+rules already stored in the cluster):
+
+```bash
+# Traits are read from a positional JSON file or stdin.
+echo '{"groups": ["devs"], "username": ["alice"]}' | \
+  tctl login_rule test --resource-file login-rule.yaml --load-from-cluster
+```
+
+The names of applied rules are recorded on the SSO diagnostic info and in the
+`login_rule.create`/`login_rule.delete` audit events. Editing rules requires the
+`login_rule` resource verbs, which the preset `editor` role already grants.
 
 ## Docker
 

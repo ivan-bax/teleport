@@ -517,6 +517,12 @@ func NewServer(cfg *InitConfig, opts ...ServerOption) (as *Server, err error) {
 			return nil, trace.Wrap(err, "creating GitServer service")
 		}
 	}
+	if cfg.LoginRules == nil {
+		cfg.LoginRules, err = local.NewLoginRuleService(cfg.Backend)
+		if err != nil {
+			return nil, trace.Wrap(err, "creating LoginRule service")
+		}
+	}
 	if cfg.WorkloadIdentity == nil {
 		workloadIdentity, err := local.NewWorkloadIdentityService(cfg.Backend)
 		if err != nil {
@@ -702,6 +708,7 @@ func NewServer(cfg *InitConfig, opts ...ServerOption) (as *Server, err error) {
 		Plugins:                         cfg.Plugins,
 		PluginStaticCredentials:         cfg.PluginStaticCredentials,
 		GitServers:                      cfg.GitServers,
+		LoginRules:                      cfg.LoginRules,
 		WorkloadIdentities:              cfg.WorkloadIdentity,
 		StableUNIXUsersInternal:         cfg.StableUNIXUsers,
 		WorkloadIdentityX509Revocations: cfg.WorkloadIdentityX509Revocations,
@@ -1007,6 +1014,7 @@ type Services struct {
 	services.Plugins
 	services.PluginStaticCredentials
 	services.GitServers
+	services.LoginRules
 	services.WorkloadIdentities
 	services.StableUNIXUsersInternal
 	services.WorkloadIdentityX509Revocations

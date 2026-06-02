@@ -6616,7 +6616,20 @@ func NewGRPCServer(cfg GRPCServerConfig) (*GRPCServer, error) {
 	// register the actual service via an auth plugin, if we register here then all
 	// Enterprise builds would fail with a duplicate service registered error.
 	if cfg.PluginRegistry == nil || !cfg.PluginRegistry.IsRegistered("auth.enterprise") {
-		loginrulev1pb.RegisterLoginRuleServiceServer(server, loginrulev1.NotImplementedService{})
+		// Register the OSS login rule service and install the evaluator so
+		// login rules are applied during SSO logins.
+		loginRuleEvaluator := loginrulev1.NewEvaluator(cfg.AuthServer.Services)
+		cfg.AuthServer.SetLoginRuleEvaluator(loginRuleEvaluator)
+		loginRuleService, err := loginrulev1.NewService(loginrulev1.ServiceConfig{
+			Authorizer: cfg.Authorizer,
+			Backend:    cfg.AuthServer.Services,
+			Emitter:    cfg.Emitter,
+		})
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+		loginrulev1pb.RegisterLoginRuleServiceServer(server, loginRuleService)
+
 		secreportsv1pb.RegisterSecReportsServiceServer(server, secreportsv1.NotImplementedService{})
 
 		// Register OSS device trust service.

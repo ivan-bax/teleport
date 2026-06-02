@@ -65,6 +65,9 @@ CUSTOM_COMMITS=(
     "091318f2c41"  # add more views to access request view
     "050c760488f"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
 
+    # Login rules
+    "d313b102ecb"  # Enable login rules feature in Teleport OSS
+
     # Fork-specific CI cleanup
     "5205fd035b4"  # remove unused ci/cd and update to make work for this fork
 )

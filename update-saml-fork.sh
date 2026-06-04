@@ -26,50 +26,57 @@ UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-origin}"
 BRANCH_NAME="feature/saml-oss"
 
 # All custom commits to cherry-pick, in order (update these if you amend them)
-# SHAs below are from feature/saml-oss after the v18.8.1 rebase (2026-05-22).
+# SHAs below are from feature/saml-oss after the v18.8.2 rebase (2026-06-04).
 CUSTOM_COMMITS=(
     # SAML support
-    "1be9ecf5566"  # Enable SAML authentication in Teleport OSS
-    "7d7006ea056"  # Add test SAML configuration
+    "f89567753b9"  # Enable SAML authentication in Teleport OSS
+    "54b058d2662"  # Add test SAML configuration
 
     # CI/CD and build
-    "254bb2e6481"  # Add script to rebase SAML patches onto new Teleport releases
-    "d08e45236e8"  # Add CI/CD pipeline to build Docker image with SAML support
-    "60ae95862b9"  # Fix Dockerfile chmod outside RUN instruction
-    "44e7b6f944f"  # Fix version detection in CI workflow
-    "77e473fc0f7"  # Rebuild web UI from source instead of patching compiled bundle
-    "ce5075a5597"  # Fix Dockerfile to build web UI from source correctly
-    "1aba7f56524"  # Add binary releases and install script
-    "6ebfe2c3997"  # Fix CI disk space: free runner space and strip Go debug symbols
-    "f474c927a83"  # Fix release workflow version detection and binary extraction
+    "b8150a22da3"  # Add script to rebase SAML patches onto new Teleport releases
+    "5711bc1566b"  # Add CI/CD pipeline to build Docker image with SAML support
+    "d6dd17b0bfe"  # Fix Dockerfile chmod outside RUN instruction
+    "cdc1956ad6a"  # Fix version detection in CI workflow
+    "4663660c5c7"  # Rebuild web UI from source instead of patching compiled bundle
+    "061a0321666"  # Fix Dockerfile to build web UI from source correctly
+    "bacad54d15b"  # Add binary releases and install script
+    "a6013acab03"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "aab4861525a"  # Fix release workflow version detection and binary extraction
 
     # Web UI
-    "ac090da58a6"  # Add SAML connector editor to web UI
+    "c6835954921"  # Add SAML connector editor to web UI
 
     # Device trust
-    "1570838ac11"  # Enable device trust registration in Teleport OSS
-    "34b70eedd15"  # Fix device authentication to return real augmented certificates
-    "c982a7abd86"  # Disable global device trust mode at proxy transport level
-    "37aff4e20a2"  # Add second factor and webauthn config to test SAML config
-    "a79c6699ba1"  # Enable trusted devices UI in Teleport OSS
-    "0125ee7030a"  # Fix device enrollment not setting owner field
+    "c35010d5f3a"  # Enable device trust registration in Teleport OSS
+    "40c6358e746"  # Fix device authentication to return real augmented certificates
+    "2c325d91672"  # Disable global device trust mode at proxy transport level
+    "659636c1782"  # Add second factor and webauthn config to test SAML config
+    "e7b4f716b5c"  # Enable trusted devices UI in Teleport OSS
+    "4fbf9a43c78"  # Fix device enrollment not setting owner field
 
     # Documentation
-    "ddf159914ff"  # add documentation on releases
+    "8eacf52bd23"  # add documentation on releases
 
     # Role options
-    "41214210af7"  # Remove enterprise restriction for pin_source_ip role option
+    "790c5b08701"  # Remove enterprise restriction for pin_source_ip role option
 
     # Access requests
-    "815036b73fc"  # Enable access requests feature in Teleport OSS
-    "091318f2c41"  # add more views to access request view
-    "050c760488f"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
-
-    # Login rules
-    "d313b102ecb"  # Enable login rules feature in Teleport OSS
+    "92aed465bcb"  # Enable access requests feature in Teleport OSS
+    "0412894fbfd"  # add more views to access request view
+    "7cd313f66f6"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
 
     # Fork-specific CI cleanup
-    "5205fd035b4"  # remove unused ci/cd and update to make work for this fork
+    "73ec8c39b07"  # remove unused ci/cd and update to make work for this fork
+
+    # Login rules
+    "b98d53ed1aa"  # Enable login rules feature in Teleport OSS
+
+    # Access monitoring rules
+    "dd62c3a23c5"  # Add access monitoring rules UI and web API for OSS
+
+    # Cross-origin logout
+    "a751f12b05b"  # Add cross-origin logout endpoint with origin allowlist
+    "87c553f6603"  # Use DELETE for the cross-origin logout endpoint
 )
 
 RED='\033[0;31m'

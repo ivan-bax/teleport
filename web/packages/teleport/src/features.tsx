@@ -52,6 +52,7 @@ import {
 import { ListSessionRecordingsRoute } from 'teleport/SessionRecordings/list/ListSessionRecordingsRoute';
 
 import { AccessRequestsPage } from './AccessRequests';
+import { AccessMonitoringPage } from './AccessMonitoring';
 import { AccountPage } from './Account';
 import { AuditContainer as Audit } from './Audit';
 import { AuthConnectorsContainer as AuthConnectors } from './AuthConnectors';
@@ -106,6 +107,35 @@ class AccessRequests implements TeleportFeature {
       return cfg.routes.requests.replace(':requestId?', '');
     },
     searchableTags: ['access requests'],
+  };
+}
+
+export class FeatureAccessMonitoring implements TeleportFeature {
+  category = NavigationCategory.IdentityGovernance;
+
+  route = {
+    title: 'Access Monitoring',
+    path: cfg.routes.accessMonitoring,
+    exact: true,
+    component: AccessMonitoringPage,
+  };
+
+  hasAccess() {
+    return true;
+  }
+
+  navigationItem = {
+    title: NavTitle.AccessMonitoring,
+    icon: SlidersVertical,
+    exact: true,
+    getLink() {
+      return cfg.getAccessMonitoringRoute();
+    },
+    searchableTags: [
+      'access monitoring',
+      'access automation',
+      'monitoring rules',
+    ],
   };
 }
 
@@ -964,6 +994,7 @@ export function getOSSFeatures(): TeleportFeature[] {
 
     // - Identity
     new AccessRequests(),
+    new FeatureAccessMonitoring(),
     new FeatureLocks(),
     new FeatureNewLock(),
     new FeatureWorkloadIdentity(),

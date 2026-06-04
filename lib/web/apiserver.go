@@ -920,6 +920,12 @@ func (h *Handler) bindDefaultEndpoints() {
 	h.PUT("/enterprise/accessrequest/:requestId", h.WithAuth(h.updateAccessRequestState))
 	h.POST("/enterprise/accessrequest/:requestId/review", h.WithAuth(h.submitAccessReview))
 
+	// access monitoring rule handlers
+	h.GET("/webapi/accessmonitoringrules", h.WithAuth(h.listAccessMonitoringRules))
+	h.POST("/webapi/accessmonitoringrules", h.WithAuth(h.createAccessMonitoringRule))
+	h.PUT("/webapi/accessmonitoringrules/:name", h.WithAuth(h.updateAccessMonitoringRule))
+	h.DELETE("/webapi/accessmonitoringrules/:name", h.WithAuth(h.deleteAccessMonitoringRule))
+
 	// join token handlers
 	h.PUT("/webapi/tokens/yaml", h.WithAuth(h.updateTokenYAML))
 	// used for creating a new token

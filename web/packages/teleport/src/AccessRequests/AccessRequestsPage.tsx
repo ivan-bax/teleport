@@ -285,9 +285,12 @@ function RequestListView() {
       {showNewRequestDialog && (
         <NewAccessRequestDialog
           onClose={() => setShowNewRequestDialog(false)}
-          onCreated={() => {
+          onCreated={created => {
             setShowNewRequestDialog(false);
             fetchRequests();
+            history.push(
+              cfg.routes.requests.replace(':requestId?', created.id)
+            );
           }}
         />
       )}
@@ -300,7 +303,7 @@ function NewAccessRequestDialog({
   onCreated,
 }: {
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (created: AccessRequest) => void;
 }) {
   const [roles, setRoles] = useState('');
   const [reason, setReason] = useState('');
@@ -313,10 +316,22 @@ function NewAccessRequestDialog({
       if (roleList.length === 0) {
         throw new Error('At least one role is required');
       }
-      await createAccessRequest({ roles: roleList, reason: reason || undefined });
-      onCreated();
-    }, [roles, reason, onCreated])
+      return createAccessRequest({
+        roles: roleList,
+        reason: reason || undefined,
+      });
+    }, [roles, reason])
   );
+
+  async function handleSubmit() {
+    const [created, err] = await runCreate();
+    // Only dismiss and navigate once the request actually succeeded. On error
+    // the dialog stays open and surfaces the alert below, instead of closing
+    // with no feedback.
+    if (!err && created) {
+      onCreated(created);
+    }
+  }
 
   return (
     <Dialog open={true} onClose={onClose}>
@@ -341,7 +356,7 @@ function NewAccessRequestDialog({
         </Box>
         <Box mb={3}>
           <Text mb={1} bold>
-            Reason (optional)
+            Reason
           </Text>
           <TextArea
             value={reason}
@@ -355,7 +370,7 @@ function NewAccessRequestDialog({
       <DialogFooter>
         <ButtonPrimary
           mr={3}
-          onClick={() => runCreate()}
+          onClick={handleSubmit}
           disabled={createAttempt.status === 'processing' || !roles.trim()}
         >
           {createAttempt.status === 'processing' ? 'Submitting...' : 'Submit Request'}

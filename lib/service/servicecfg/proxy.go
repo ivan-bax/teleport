@@ -167,6 +167,10 @@ type ProxyConfig struct {
 	// QUIC connections and will use QUIC to connect to peer proxies that
 	// advertise support for it.
 	QUICProxyPeering bool
+
+	// AllowedLogoutOrigins is a list of origins allowed to call the
+	// cross-origin logout endpoint (POST /webapi/logout) with credentials.
+	AllowedLogoutOrigins []string
 }
 
 // WebPublicAddr returns the address for the web endpoint on this proxy that

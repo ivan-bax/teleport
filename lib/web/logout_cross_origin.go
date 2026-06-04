@@ -64,7 +64,7 @@ func (h *Handler) crossOriginLogoutPreflight(w http.ResponseWriter, r *http.Requ
 	}
 
 	setCrossOriginLogoutHeaders(w, origin)
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Max-Age", "3600")
 	w.WriteHeader(http.StatusOK)
@@ -74,7 +74,8 @@ func (h *Handler) crossOriginLogoutPreflight(w http.ResponseWriter, r *http.Requ
 // It requires only the session cookie (no bearer token, which other origins
 // cannot obtain); CSRF protection is provided by requiring the Origin header
 // to match the configured allowlist (browsers always attach Origin to
-// cross-origin POST requests and it cannot be forged from a page).
+// cross-origin requests and it cannot be forged from a page). DELETE is
+// also not a "simple" CORS method, so browsers will always preflight it.
 func (h *Handler) withCrossOriginLogout(fn ContextHandler) httprouter.Handle {
 	return httplib.MakeHandler(func(w http.ResponseWriter, r *http.Request, p httprouter.Params) (interface{}, error) {
 		origin := h.matchedLogoutOrigin(r.Header.Get("Origin"))
@@ -98,7 +99,7 @@ func (h *Handler) withCrossOriginLogout(fn ContextHandler) httprouter.Handle {
 // application. It performs the same work as deleteWebSession, including
 // returning the SAML single logout URL when one is configured.
 //
-// POST /webapi/logout
+// DELETE /webapi/logout
 //
 // Response: {"message": "ok"} or {"samlSloUrl": "..."}
 func (h *Handler) crossOriginLogout(w http.ResponseWriter, r *http.Request, p httprouter.Params, sctx *SessionContext) (interface{}, error) {

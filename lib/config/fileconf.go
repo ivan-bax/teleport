@@ -2687,6 +2687,11 @@ type Proxy struct {
 	// proxy built-in version server to retrieve target versions. This is part
 	// of the automatic upgrades.
 	AutomaticUpgradesChannels automaticupgrades.Channels `yaml:"automatic_upgrades_channels,omitempty"`
+
+	// AllowedLogoutOrigins is a list of origins (e.g. https://app.internal.example.com)
+	// allowed to call the cross-origin logout endpoint (POST /webapi/logout) with
+	// credentials. Wildcards are not supported.
+	AllowedLogoutOrigins apiutils.Strings `yaml:"allowed_logout_origins,omitempty"`
 }
 
 // UIConfig provides config options for the web UI served by the proxy service.

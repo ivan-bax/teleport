@@ -1176,6 +1176,38 @@ func TestPostgresPublicAddr(t *testing.T) {
 	}
 }
 
+// TestAllowedLogoutOrigins verifies parsing and validation of the
+// proxy_service.allowed_logout_origins option.
+func TestAllowedLogoutOrigins(t *testing.T) {
+	tests := []struct {
+		desc    string
+		origins []string
+		wantErr bool
+	}{
+		{desc: "empty", origins: nil},
+		{desc: "valid origins", origins: []string{"https://app.internal.example.com", "http://other.example.com:8080"}},
+		{desc: "wildcard rejected", origins: []string{"*"}, wantErr: true},
+		{desc: "wildcard subdomain rejected", origins: []string{"https://*.example.com"}, wantErr: true},
+		{desc: "path rejected", origins: []string{"https://app.example.com/logout"}, wantErr: true},
+		{desc: "missing scheme rejected", origins: []string{"app.example.com"}, wantErr: true},
+		{desc: "non-http scheme rejected", origins: []string{"ftp://app.example.com"}, wantErr: true},
+	}
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			cfg := servicecfg.MakeDefaultConfig()
+			err := applyProxyConfig(&FileConfig{
+				Proxy: Proxy{AllowedLogoutOrigins: test.origins},
+			}, cfg)
+			if test.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.EqualValues(t, test.origins, cfg.Proxy.AllowedLogoutOrigins)
+		})
+	}
+}
+
 // TestProxyPeeringPublicAddr makes sure the public address can only be
 // set if the listen addr is set.
 func TestProxyPeeringPublicAddr(t *testing.T) {

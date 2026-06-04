@@ -338,6 +338,10 @@ type Config struct {
 
 	// DatabaseREPLRegistry is used for retrieving database REPL.
 	DatabaseREPLRegistry dbrepl.REPLRegistry
+
+	// AllowedLogoutOrigins is a list of origins allowed to call the
+	// cross-origin logout endpoint (POST /webapi/logout) with credentials.
+	AllowedLogoutOrigins []string
 }
 
 // SetDefaults ensures proper default values are set if
@@ -845,6 +849,11 @@ func (h *Handler) bindDefaultEndpoints() {
 	h.POST("/webapi/sessions/web", h.WithLimiter(h.createWebSession))
 	h.DELETE("/webapi/sessions/web", h.WithAuth(h.deleteWebSession))
 	h.POST("/webapi/sessions/web/renew", h.WithAuth(h.renewWebSession))
+
+	// cross-origin logout for allowlisted internal applications, see
+	// Config.AllowedLogoutOrigins (proxy_service.allowed_logout_origins)
+	h.OPTIONS("/webapi/logout", h.crossOriginLogoutPreflight)
+	h.POST("/webapi/logout", h.withCrossOriginLogout(h.crossOriginLogout))
 	h.POST("/webapi/users", h.WithAuth(h.createUserHandle))
 	h.PUT("/webapi/users", h.WithAuth(h.updateUserHandle))
 	// TODO(rudream): DELETE IN V21.0.0

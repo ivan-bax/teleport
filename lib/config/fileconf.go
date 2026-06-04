@@ -2688,7 +2688,7 @@ type Proxy struct {
 	AutomaticUpgradesChannels automaticupgrades.Channels `yaml:"automatic_upgrades_channels,omitempty"`
 
 	// AllowedLogoutOrigins is a list of origins (e.g. https://app.internal.example.com)
-	// allowed to call the cross-origin logout endpoint (POST /webapi/logout) with
+	// allowed to call the cross-origin logout endpoint (DELETE /webapi/logout) with
 	// credentials. Wildcards are not supported.
 	AllowedLogoutOrigins apiutils.Strings `yaml:"allowed_logout_origins,omitempty"`
 }

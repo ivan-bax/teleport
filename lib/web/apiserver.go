@@ -340,7 +340,7 @@ type Config struct {
 	DatabaseREPLRegistry dbrepl.REPLRegistry
 
 	// AllowedLogoutOrigins is a list of origins allowed to call the
-	// cross-origin logout endpoint (POST /webapi/logout) with credentials.
+	// cross-origin logout endpoint (DELETE /webapi/logout) with credentials.
 	AllowedLogoutOrigins []string
 }
 
@@ -853,7 +853,7 @@ func (h *Handler) bindDefaultEndpoints() {
 	// cross-origin logout for allowlisted internal applications, see
 	// Config.AllowedLogoutOrigins (proxy_service.allowed_logout_origins)
 	h.OPTIONS("/webapi/logout", h.crossOriginLogoutPreflight)
-	h.POST("/webapi/logout", h.withCrossOriginLogout(h.crossOriginLogout))
+	h.DELETE("/webapi/logout", h.withCrossOriginLogout(h.crossOriginLogout))
 	h.POST("/webapi/users", h.WithAuth(h.createUserHandle))
 	h.PUT("/webapi/users", h.WithAuth(h.updateUserHandle))
 	// TODO(rudream): DELETE IN V21.0.0

@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gravitational/trace"
 	"github.com/julienschmidt/httprouter"
 
@@ -235,7 +236,7 @@ func (h *Handler) createAccessRequest(w http.ResponseWriter, r *http.Request, p 
 	}
 
 	accessReq, err := types.NewAccessRequestWithResources(
-		"", // empty name, server generates UUID
+		uuid.NewString(), // request name must be a unique, non-empty identifier
 		sctx.GetUser(),
 		req.Roles,
 		types.ResourceIDsToResourceAccessIDs(resourceIDs),

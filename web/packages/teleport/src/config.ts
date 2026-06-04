@@ -243,6 +243,7 @@ const cfg = {
     locks: '/web/locks',
     newLock: '/web/locks/new',
     requests: '/web/requests/:requestId?',
+    accessMonitoring: '/web/accessmonitoring',
 
     downloadCenter: '/web/downloads',
     managedUpdates: '/web/managedupdates',
@@ -518,6 +519,9 @@ const cfg = {
 
     // Assist needs some access request info to exist in OSS
     accessRequestPath: '/v1/enterprise/accessrequest/:requestId?',
+
+    accessMonitoringRulesPath: '/v1/webapi/accessmonitoringrules',
+    accessMonitoringRulePath: '/v1/webapi/accessmonitoringrules/:name',
 
     accessGraphFeatures: '/v1/enterprise/accessgraph/static/features.json',
 
@@ -1657,6 +1661,18 @@ const cfg = {
 
   getAccessRequestRoute(requestId?: string) {
     return generatePath(cfg.routes.requests, { requestId });
+  },
+
+  getAccessMonitoringRulesUrl() {
+    return cfg.api.accessMonitoringRulesPath;
+  },
+
+  getAccessMonitoringRuleUrl(name?: string) {
+    return generatePath(cfg.api.accessMonitoringRulePath, { name });
+  },
+
+  getAccessMonitoringRoute() {
+    return cfg.routes.accessMonitoring;
   },
 
   getAccessGraphFeaturesUrl() {

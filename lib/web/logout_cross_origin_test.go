@@ -99,7 +99,7 @@ func TestCrossOriginLogout(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Equal(t, allowedOrigin, resp.Header.Get("Access-Control-Allow-Origin"))
 		require.Equal(t, "true", resp.Header.Get("Access-Control-Allow-Credentials"))
-		require.Contains(t, resp.Header.Get("Access-Control-Allow-Methods"), "POST")
+		require.Contains(t, resp.Header.Get("Access-Control-Allow-Methods"), "DELETE")
 	})
 
 	t.Run("preflight disallowed origin", func(t *testing.T) {
@@ -115,7 +115,7 @@ func TestCrossOriginLogout(t *testing.T) {
 		clt := newRawClient(t, pack.cookies)
 
 		for _, origin := range []string{"", "https://evil.example.com"} {
-			resp := do(t, clt, http.MethodPost, origin)
+			resp := do(t, clt, http.MethodDelete, origin)
 			require.Equal(t, http.StatusForbidden, resp.StatusCode)
 			require.Empty(t, resp.Header.Get("Access-Control-Allow-Origin"))
 		}
@@ -129,7 +129,7 @@ func TestCrossOriginLogout(t *testing.T) {
 		pack := proxy.authPack(t, "cors-logout-allowed", nil /* roles */)
 		clt := newRawClient(t, pack.cookies)
 
-		resp := do(t, clt, http.MethodPost, allowedOrigin)
+		resp := do(t, clt, http.MethodDelete, allowedOrigin)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		require.Equal(t, allowedOrigin, resp.Header.Get("Access-Control-Allow-Origin"))
 		require.Equal(t, "true", resp.Header.Get("Access-Control-Allow-Credentials"))
@@ -142,7 +142,7 @@ func TestCrossOriginLogout(t *testing.T) {
 	t.Run("logout requires session cookie", func(t *testing.T) {
 		clt := newRawClient(t, nil)
 
-		resp := do(t, clt, http.MethodPost, allowedOrigin)
+		resp := do(t, clt, http.MethodDelete, allowedOrigin)
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 		// CORS headers are set even on auth failure so the caller can read
 		// the error and treat it as "already logged out"
@@ -158,7 +158,7 @@ func TestCrossOriginLogout(t *testing.T) {
 		pack := proxy.authPack(t, "cors-logout-disabled", nil /* roles */)
 		clt := newRawClient(t, pack.cookies)
 
-		resp := do(t, clt, http.MethodPost, allowedOrigin)
+		resp := do(t, clt, http.MethodDelete, allowedOrigin)
 		require.Equal(t, http.StatusForbidden, resp.StatusCode)
 
 		// the session must still be valid

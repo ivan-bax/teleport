@@ -169,7 +169,7 @@ type ProxyConfig struct {
 	QUICProxyPeering bool
 
 	// AllowedLogoutOrigins is a list of origins allowed to call the
-	// cross-origin logout endpoint (POST /webapi/logout) with credentials.
+	// cross-origin logout endpoint (DELETE /webapi/logout) with credentials.
 	AllowedLogoutOrigins []string
 }
 

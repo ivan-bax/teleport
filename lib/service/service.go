@@ -5533,6 +5533,7 @@ func (process *TeleportProcess) initProxyEndpoint(conn *Connector) error {
 			IntegrationAppHandler:     connectionsHandler,
 			FeatureWatchInterval:      retryutils.HalfJitter(web.DefaultFeatureWatchInterval * 2),
 			DatabaseREPLRegistry:      cfg.DatabaseREPLRegistry,
+			AllowedLogoutOrigins:      cfg.Proxy.AllowedLogoutOrigins,
 		}
 		webHandler, err := web.NewHandler(webConfig, web.SetClock(process.Clock))
 		if err != nil {

@@ -1452,6 +1452,20 @@ func applyProxyConfig(fc *FileConfig, cfg *servicecfg.Config) error {
 	}
 	cfg.Proxy.ACME = *acme
 	cfg.Proxy.TrustXForwardedFor = fc.Proxy.TrustXForwardedFor.Value()
+
+	for _, origin := range fc.Proxy.AllowedLogoutOrigins {
+		parsed, err := url.Parse(origin)
+		if err != nil {
+			return trace.Wrap(err, "invalid allowed_logout_origins entry %q", origin)
+		}
+		if (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" ||
+			parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
+			strings.Contains(origin, "*") {
+			return trace.BadParameter("allowed_logout_origins entry %q must be an origin of the form https://host[:port] without path or wildcards", origin)
+		}
+	}
+	cfg.Proxy.AllowedLogoutOrigins = fc.Proxy.AllowedLogoutOrigins
+
 	return nil
 }
 

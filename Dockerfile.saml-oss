@@ -31,13 +31,12 @@ RUN corepack enable pnpm
 
 WORKDIR /src
 
-# Copy package files, config, and patches first for dependency caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .pnpmfile.cjs .npmrc ./
+# Copy package files and config first for dependency caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .pnpmfile.cjs ./
 COPY web/packages/teleport/package.json web/packages/teleport/
 COPY web/packages/design/package.json web/packages/design/
 COPY web/packages/shared/package.json web/packages/shared/
 COPY web/packages/build/package.json web/packages/build/
-COPY web/patches/ web/patches/
 
 # Install JS dependencies
 RUN pnpm install --frozen-lockfile
@@ -55,8 +54,13 @@ RUN cargo build --package ironrdp --lib --target wasm32-unknown-unknown --releas
     echo '{"name":"ironrdp","version":"0.1.0","module":"ironrdp.js","types":"ironrdp.d.ts","sideEffects":true}' \
         > web/packages/shared/libs/ironrdp/pkg/package.json
 
-# Build web UI (OSS) — run vite directly since WASM is already built above
-RUN cd web/packages/teleport && npx vite build
+# Build web UI (OSS). Run vite via `pnpm --filter ... exec` from the workspace root
+# (not a bare `npx vite build`) so pnpm puts its hoisted store on the module
+# resolution path — Vite 8 (v18.9.0) loads its bundled config from a temp file under
+# teleport/node_modules and otherwise cannot resolve the build-tooling plugins that
+# live in web/packages/build. Using `exec vite build` (not the package `build`
+# script) also skips a redundant WASM rebuild, since WASM is already built above.
+RUN pnpm --filter=@gravitational/teleport exec vite build
 
 # ----- Build Go binaries -----
 FROM golang:1.25-bookworm AS builder

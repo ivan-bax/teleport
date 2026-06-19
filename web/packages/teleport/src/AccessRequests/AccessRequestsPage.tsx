@@ -362,7 +362,7 @@ function NewAccessRequestDialog({
             value={reason}
             onChange={e => setReason(e.target.value)}
             placeholder="Why do you need this access?"
-            rows={3}
+            size="large"
             resizable={true}
           />
         </Box>
@@ -571,7 +571,7 @@ function RequestDetailView({
 
         {request.reviews.length > 0 && (
           <Box mt={4}>
-            <Text typography="h5" mb={2}>
+            <Text typography="h4" mb={2}>
               Reviews
             </Text>
             {request.reviews.map((review, i) => (
@@ -600,7 +600,7 @@ function RequestDetailView({
 
         {flags.canReview && (
           <Box mt={4}>
-            <Text typography="h5" mb={2}>
+            <Text typography="h4" mb={2}>
               Submit Review
             </Text>
             <Box mb={2}>
@@ -646,7 +646,7 @@ function RequestDetailView({
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <Flex mb={2} gap={2}>
-      <Text bold minWidth="120px">
+      <Text bold style={{ minWidth: '120px' }}>
         {label}:
       </Text>
       <Text>{value}</Text>

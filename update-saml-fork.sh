@@ -26,42 +26,61 @@ UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-origin}"
 BRANCH_NAME="feature/saml-oss"
 
 # All custom commits to cherry-pick, in order (update these if you amend them)
+# SHAs below are from feature/saml-oss after the v18.9.0 rebase (2026-06-19).
 CUSTOM_COMMITS=(
     # SAML support
-    "bafedd0d0d"  # Enable SAML authentication in Teleport OSS
-    "fae973635b"  # Add test SAML configuration
+    "7b1f4b113f1"  # Enable SAML authentication in Teleport OSS
+    "46c6efa2270"  # Add test SAML configuration
 
     # CI/CD and build
-    "d295c5641d"  # Add script to rebase SAML patches onto new Teleport releases
-    "47f1db3585"  # Add CI/CD pipeline to build Docker image with SAML support
-    "ccbcb01035"  # Fix Dockerfile chmod outside RUN instruction
-    "e8c1e5fe1d"  # Fix version detection in CI workflow
-    "2e9cf2086d"  # Rebuild web UI from source instead of patching compiled bundle
-    "fcf3bf8f38"  # Fix Dockerfile to build web UI from source correctly
-    "0723de7d0f"  # Add binary releases and install script
-    "a9785bfe85"  # Fix CI disk space: free runner space and strip Go debug symbols
-    "91482ff163"  # Fix release workflow version detection and binary extraction
+    "d12754090a5"  # Add script to rebase SAML patches onto new Teleport releases
+    "09b73a9664b"  # Add CI/CD pipeline to build Docker image with SAML support
+    "48c227fc4a6"  # Fix Dockerfile chmod outside RUN instruction
+    "5213f797188"  # Fix version detection in CI workflow
+    "1fe2c9f802f"  # Rebuild web UI from source instead of patching compiled bundle
+    "742e7736109"  # Fix Dockerfile to build web UI from source correctly
+    "5a2c70884e7"  # Add binary releases and install script
+    "7431d928726"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "a39ed493c55"  # Fix release workflow version detection and binary extraction
 
     # Web UI
-    "f75778af80"  # Add SAML connector editor to web UI
+    "e7452939003"  # Add SAML connector editor to web UI
 
     # Device trust
-    "a705b744f7"  # Enable device trust registration in Teleport OSS
-    "7848d3993e"  # Fix device authentication to return real augmented certificates
-    "e424c25af0"  # Disable global device trust mode at proxy transport level
-    "47566f2fb4"  # Add second factor and webauthn config to test SAML config
-    "d2094c259c"  # Enable trusted devices UI in Teleport OSS
-    "249e4e1871"  # Fix device enrollment not setting owner field
+    "735423967f1"  # Enable device trust registration in Teleport OSS
+    "acab4a144d7"  # Fix device authentication to return real augmented certificates
+    "29f9b7f3e74"  # Disable global device trust mode at proxy transport level
+    "92409da7382"  # Add second factor and webauthn config to test SAML config
+    "8bfdda29052"  # Enable trusted devices UI in Teleport OSS
+    "cc21a8fe583"  # Fix device enrollment not setting owner field
 
     # Documentation
-    "980d083c78"  # add documentation on releases
+    "170e382f4af"  # add documentation on releases
 
     # Role options
-    "3883cf48aa"  # Remove enterprise restriction for pin_source_ip role option
+    "5bd0f466fc9"  # Remove enterprise restriction for pin_source_ip role option
 
     # Access requests
-    "ef53a72c49"  # Enable access requests feature in Teleport OSS
-    "d084013ebc"  # add more views to access request view
+    "91dbcce2d49"  # Enable access requests feature in Teleport OSS
+    "48d8f266abd"  # add more views to access request view
+    "11d18e6b0c8"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
+    "670997efa53"  # Fix access requests web UI for v18.9.0 design system API
+
+    # Fork-specific CI cleanup
+    "bc3ddda3e4c"  # remove unused ci/cd and update to make work for this fork
+
+    # Login rules
+    "9c0d12a8c5c"  # Enable login rules feature in Teleport OSS
+
+    # Access monitoring rules
+    "b5d8bafb94b"  # Add access monitoring rules UI and web API for OSS
+
+    # Cross-origin logout
+    "2ab65289b45"  # Add cross-origin logout endpoint with origin allowlist
+    "95b0271e8ca"  # Use DELETE for the cross-origin logout endpoint
+
+    # v18.9.0 build fixes
+    "86de258eb49"  # Fix Docker web build for v18.9.0 (Vite 8, removed .npmrc/web-patches)
 )
 
 RED='\033[0;31m'

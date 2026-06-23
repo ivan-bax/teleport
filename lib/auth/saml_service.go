@@ -158,6 +158,12 @@ func (s *ossSAMLService) ValidateSAMLResponse(ctx context.Context, samlResponse,
 		Method:             events.LoginMethodSAML,
 		ConnectionMetadata: authz.ConnectionMetadata(ctx),
 	}
+	// The proxy's ACS handler forwards the real client IP as clientIP. Use it
+	// for the audit event, since ConnectionMetadata(ctx) only sees the internal
+	// proxy->auth connection (loopback) and would otherwise record localhost.
+	if clientIP != "" {
+		event.ConnectionMetadata.RemoteAddr = clientIP
+	}
 
 	auth, err := s.validateSAMLResponse(ctx, diagCtx, samlResponse, connectorID, clientIP)
 	diagCtx.Info.Error = trace.UserMessage(err)

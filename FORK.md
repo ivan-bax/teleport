@@ -25,8 +25,59 @@ This fork applies custom commits on top of upstream releases:
 |------|---------|
 | `update-saml-fork.sh` | Rebases custom patches onto new upstream releases |
 | `.github/workflows/build-saml-oss.yaml` | CI workflow: build, push Docker image, publish release |
+| `.github/workflows/fork-tests.yaml` | CI workflow: regression gate for this fork's patches |
 | `Dockerfile.saml-oss` | Multi-stage Docker build for the fork |
 | `install-teleport-saml.sh` | End-user install/upgrade script |
+
+## Continuous integration
+
+The fork runs two workflows. Upstream's own test workflows were removed: their
+`changes` gating job runs `dorny/paths-filter` without a checkout on `push`
+events (upstream only fires them on `pull_request` and `merge_group`), so they
+failed instantly, and their real jobs request `ubuntu-22.04-16core` /
+`-32core` runners that do not exist outside the Gravitational org.
+
+`fork-tests.yaml` deliberately does **not** reproduce upstream's suite —
+`make test-go-unit` covers ~2000 packages with `-race` and targets 32-core
+runners. It covers the code this fork actually changes, which is what breaks on
+rebases. Everything runs on `ubuntu-latest`; do not add jobs needing the
+org-only runner labels, or they will queue forever instead of failing.
+
+| Job | Covers |
+|-----|--------|
+| `pins` | `Dockerfile.saml-oss` WASM/Node pins match `Cargo.lock`, `build.assets`, and `package.json` |
+| `go-build` | fork binaries compile; `gofmt` on patched trees |
+| `go-test` | the Go packages this fork patches |
+| `web` | `pnpm type-check`, `pnpm lint`, `pnpm test` |
+
+Some upstream tests assert OSS restrictions this fork intentionally removes
+(SAML/DeviceTrust/AccessRequests entitlements, the `@teleport-access-approval-bot`
+preset user). Those assertions were updated in place and are marked
+`// SAML-OSS fork:` — grep for that marker after a rebase. They double as
+regression tests: if the entitlements patch is ever dropped, they go red.
+
+## Pre-rebase checklist
+
+Do these by hand before rebasing; CI cannot check them.
+
+1. **Confirm the target tag is a real release.** Not every upstream `vX.Y.Z` tag
+   is rebaseable. A genuine release has a dedicated `branch/vX.Y.Z` branch, has
+   `api/version.go` and `Makefile VERSION` bumped to match the tag, and has a
+   real changelog entry. A private-security-release marker has none of these —
+   `v18.10.1` was tagged on the `branch/v18` development line with its version
+   constants still reading `18.10.0` and a changelog saying "This is a private
+   security release". Basing on one ships unreleased dev code and mislabels the
+   published release, since `build-saml-oss.yaml` derives the tag from
+   `api/version.go`.
+
+   ```bash
+   git ls-remote --heads origin 'refs/heads/branch/v18*'   # is there a branch/vX.Y.Z?
+   git show vX.Y.Z:api/version.go | grep Version           # does it match the tag?
+   ```
+
+2. **Re-check the WASM pins** in `Dockerfile.saml-oss`. It calls `wasm-bindgen`
+   directly rather than `make ensure-wasm-deps`, so it does not self-correct.
+   The `pins` CI job enforces this, but checking early avoids a wasted build.
 
 ## Git remotes
 

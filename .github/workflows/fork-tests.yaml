@@ -1,0 +1,176 @@
+name: Fork Tests
+run-name: Fork Tests - ${{ github.run_id }} - @${{ github.actor }}
+
+# Regression gate for this fork's own patches.
+#
+# This deliberately does NOT try to reproduce upstream's test suite: `make
+# test-go-unit` runs `go list ./...` across ~2000 packages with `-race -shuffle on`
+# and is built for the org's 32-core runners. Instead this covers the code the fork
+# actually changes, which is what breaks on every upstream rebase.
+#
+# Everything here runs on ubuntu-latest so it works on a personal fork. Do not add
+# jobs that need `ubuntu-22.04-16core` / `-32core` — those labels do not resolve
+# here and the job will queue forever instead of failing.
+
+on:
+  push:
+    branches:
+      - feature/saml-oss
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOFLAGS: '-buildvcs=false'
+
+jobs:
+  # Cheap guards that catch the class of bug that costs a 40-minute build to discover.
+  pins:
+    name: Build pins
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: wasm-bindgen pin matches Cargo.lock
+        run: |
+          need=$(make --no-print-directory print-wasm-bindgen-version)
+          have=$(grep -oP '^ENV WASM_BINDGEN_VERSION=\K.*' Dockerfile.saml-oss)
+          echo "Cargo.lock=$need Dockerfile=$have"
+          if [ -z "$need" ] || [ "$need" != "$have" ]; then
+            echo "::error file=Dockerfile.saml-oss::WASM_BINDGEN_VERSION is '$have' but Cargo.lock needs '$need'. The Dockerfile calls wasm-bindgen directly, so it does not self-correct like 'make ensure-wasm-deps' does."
+            exit 1
+          fi
+
+      - name: wasm-opt pin matches build.assets
+        run: |
+          need=$(make --no-print-directory -C build.assets print-wasm-opt-version)
+          have=$(grep -oP '^ENV WASM_OPT_VERSION=\K.*' Dockerfile.saml-oss)
+          echo "build.assets=$need Dockerfile=$have"
+          if [ -z "$need" ] || [ "$need" != "$have" ]; then
+            echo "::error file=Dockerfile.saml-oss::WASM_OPT_VERSION is '$have' but build.assets needs '$need'."
+            exit 1
+          fi
+
+      - name: Dockerfile Node satisfies package.json engines
+        run: |
+          want=$(grep -oP '"node":\s*"\^?\K[0-9]+' package.json | head -1)
+          have=$(grep -oP '^FROM node:\K[0-9]+' Dockerfile.saml-oss | head -1)
+          echo "package.json wants major=$want Dockerfile has major=$have"
+          if [ -z "$want" ] || [ "$want" != "$have" ]; then
+            echo "::error file=Dockerfile.saml-oss::Node major is '$have' but package.json engines wants '$want'."
+            exit 1
+          fi
+
+      # NOTE: this does NOT detect being based on a tag whose version constants
+      # were never bumped (e.g. v18.10.1, a private-security-release marker: both
+      # api/version.go and Makefile read 18.10.0 there, so they agree and this
+      # stays silent). That check needs upstream tags, which this fork does not
+      # mirror, so it remains a manual pre-rebase step. See FORK.md.
+      - name: Release version is derivable and self-consistent
+        run: |
+          v=$(grep -oP 'Version\s*=\s*"\K[^"]+' api/version.go | head -1)
+          mk=$(grep -m1 -oP '^VERSION=\K.*' Makefile)
+          echo "api/version.go=$v Makefile=$mk"
+          if [ -z "$v" ]; then
+            echo "::error file=api/version.go::Could not parse version; build-saml-oss.yaml derives the release tag and docker tag from this."
+            exit 1
+          fi
+          if [ "$v" != "$mk" ]; then
+            echo "::error::api/version.go ($v) disagrees with Makefile VERSION ($mk); the published release would be mislabeled."
+            exit 1
+          fi
+
+  go-build:
+    name: Go build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build binaries
+        run: |
+          go build ./tool/teleport/... ./tool/tctl/... ./tool/tsh/... ./tool/tbot/...
+
+      - name: Build Slack plugin
+        run: go build -o /dev/null ./integrations/access/slack/cmd/teleport-slack
+
+      # Scoped to the trees this fork patches. A repo-wide gofmt would also police
+      # upstream code, which is not this fork's job.
+      - name: gofmt
+        run: |
+          out=$(gofmt -l lib/auth lib/web lib/service lib/services lib/modules lib/config lib/devicetrust)
+          if [ -n "$out" ]; then
+            echo "::error::gofmt needed in:"; echo "$out"
+            exit 1
+          fi
+
+  go-test:
+    name: Go tests (fork packages)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The packages this fork patches. Keep in sync with:
+      #   git diff --name-only <base>..HEAD -- '*.go' | xargs -n1 dirname | sort -u
+      - name: Test fork-touched packages
+        run: |
+          go test -timeout 40m \
+            ./lib/auth \
+            ./lib/auth/loginrule/... \
+            ./lib/config \
+            ./lib/devicetrust/config \
+            ./lib/modules \
+            ./lib/service \
+            ./lib/service/servicecfg \
+            ./lib/services \
+            ./lib/services/local \
+            ./lib/web \
+            ./lib/web/ui
+
+  web:
+    name: Web (type-check, lint, jest)
+    runs-on: ubuntu-latest
+    # The buildbox carries the pinned Node/pnpm/Rust/WASM toolchain. Building the
+    # WASM module from scratch on a bare runner is slow and version-fragile.
+    container:
+      image: ghcr.io/gravitational/teleport-buildbox:teleport18
+      # --init is needed by teleterm's agentCleanupDaemon tests.
+      options: --init
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Print toolchain versions
+        run: node --version && pnpm --version
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build WASM
+        run: pnpm build-wasm
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Lint and format check
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test

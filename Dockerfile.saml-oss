@@ -11,8 +11,12 @@ FROM node:24.13.0-bookworm AS webui
 # Install Rust and WASM toolchain
 # Use stable Rust for installing CLI tools (wasm-bindgen-cli needs edition2024),
 # then add 1.81.0 as the toolchain for compiling the WASM module.
+# WASM_BINDGEN_VERSION must match the wasm-bindgen crate version in Cargo.lock
+# (`make print-wasm-bindgen-version`), otherwise the wasm-bindgen CLI aborts with a
+# schema-version mismatch. Bump it on every upstream rebase. v18.10.0: 0.2.122.
+# WASM_OPT_VERSION must match `make -C build.assets print-wasm-opt-version`.
 ENV RUST_VERSION=1.81.0
-ENV WASM_BINDGEN_VERSION=0.2.99
+ENV WASM_BINDGEN_VERSION=0.2.122
 ENV WASM_OPT_VERSION=0.116.1
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \

@@ -160,7 +160,12 @@ func TestPing(t *testing.T) {
 			},
 		},
 		{
-			name:      "OK device trust mode=off",
+			// SAML-OSS fork: upstream reports device trust as disabled on OSS
+			// builds. This fork enables the DeviceTrust entitlement in
+			// lib/modules, so OSS must report it as available instead. If this
+			// assertion starts failing, the entitlements patch was likely
+			// dropped during a rebase.
+			name:      "OK device trust enabled on OSS (fork)",
 			buildType: modules.BuildOSS,
 			spec: &types.AuthPreferenceSpecV2{
 				// Configuration is unimportant, what counts here is that the build
@@ -172,7 +177,7 @@ func TestPing(t *testing.T) {
 				},
 			},
 			assertResp: func(_ types.AuthPreference, resp *webclient.PingResponse) {
-				assert.True(t, resp.Auth.DeviceTrust.Disabled, "Auth.DeviceTrust.Disabled")
+				assert.False(t, resp.Auth.DeviceTrust.Disabled, "Auth.DeviceTrust.Disabled")
 			},
 		},
 		{

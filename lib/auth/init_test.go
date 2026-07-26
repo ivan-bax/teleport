@@ -1290,7 +1290,12 @@ func TestPresets(t *testing.T) {
 	}
 
 	t.Run("Does not upsert roles if nothing changes", func(t *testing.T) {
-		upsertRoleTest(t, modules.BuildOSS, presetRoleNames, nil)
+		// SAML-OSS fork: upstream creates no system roles on OSS. This fork
+		// enables access requests in OSS, so the automatic access approval role
+		// (used by @teleport-access-approval-bot) is created here too.
+		upsertRoleTest(t, modules.BuildOSS, presetRoleNames, []string{
+			teleport.SystemAutomaticAccessApprovalRoleName,
+		})
 	})
 
 	t.Run("Enterprise", func(t *testing.T) {
@@ -1433,8 +1438,13 @@ func TestDashboardMode(t *testing.T) {
 
 func TestGetPresetUsers(t *testing.T) {
 	t.Parallel()
-	// no preset users for OSS
-	require.Empty(t, auth.GetPresetUsers(modules.BuildOSS))
+	// SAML-OSS fork: upstream creates no preset users on OSS. This fork enables
+	// access requests and the automatic-approval watcher in OSS, which needs the
+	// @teleport-access-approval-bot user to submit reviews, so it is a preset
+	// user here too.
+	require.Equal(t, []types.User{
+		services.NewSystemAutomaticAccessBotUser(modules.BuildOSS),
+	}, auth.GetPresetUsers(modules.BuildOSS))
 
 	// preset user @teleport-access-approval-bot on enterprise
 	require.Equal(t, []types.User{

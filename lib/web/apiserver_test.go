@@ -5114,28 +5114,37 @@ func TestGetWebConfig_WithEntitlements(t *testing.T) {
 		AutomaticUpgrades:  false,
 		JoinActiveSessions: true,
 		Edition:            modules.BuildOSS, // testBuildType is empty
+		// SAML-OSS fork: upstream expects these three off on an OSS build. This
+		// fork un-gates them in lib/modules, so they must report as enabled. If
+		// these flip back to false, the entitlements patch was dropped in a rebase.
+		AccessRequests: true,
+		TrustedDevices: true,
+		SAML:           true,
 		Entitlements: map[string]webclient.EntitlementInfo{
-			string(entitlements.AccessLists):                {Enabled: false},
-			string(entitlements.AccessMonitoring):           {Enabled: false},
-			string(entitlements.AccessRequests):             {Enabled: false},
-			string(entitlements.App):                        {Enabled: true},
-			string(entitlements.Beams):                      {Enabled: false},
-			string(entitlements.CloudAuditLogRetention):     {Enabled: false},
-			string(entitlements.DB):                         {Enabled: true},
-			string(entitlements.Desktop):                    {Enabled: true},
-			string(entitlements.DeviceTrust):                {Enabled: false},
-			string(entitlements.ExternalAuditStorage):       {Enabled: false},
-			string(entitlements.FeatureHiding):              {Enabled: false},
-			string(entitlements.HSM):                        {Enabled: false},
-			string(entitlements.Identity):                   {Enabled: false},
-			string(entitlements.JoinActiveSessions):         {Enabled: true},
-			string(entitlements.K8s):                        {Enabled: true},
-			string(entitlements.MobileDeviceManagement):     {Enabled: false},
-			string(entitlements.OIDC):                       {Enabled: false},
-			string(entitlements.OktaSCIM):                   {Enabled: false},
-			string(entitlements.OktaUserSync):               {Enabled: false},
-			string(entitlements.Policy):                     {Enabled: false},
-			string(entitlements.SAML):                       {Enabled: false},
+			string(entitlements.AccessLists):      {Enabled: false},
+			string(entitlements.AccessMonitoring): {Enabled: false},
+			// SAML-OSS fork: enabled (upstream: false).
+			string(entitlements.AccessRequests):         {Enabled: true},
+			string(entitlements.App):                    {Enabled: true},
+			string(entitlements.Beams):                  {Enabled: false},
+			string(entitlements.CloudAuditLogRetention): {Enabled: false},
+			string(entitlements.DB):                     {Enabled: true},
+			string(entitlements.Desktop):                {Enabled: true},
+			// SAML-OSS fork: enabled (upstream: false).
+			string(entitlements.DeviceTrust):            {Enabled: true},
+			string(entitlements.ExternalAuditStorage):   {Enabled: false},
+			string(entitlements.FeatureHiding):          {Enabled: false},
+			string(entitlements.HSM):                    {Enabled: false},
+			string(entitlements.Identity):               {Enabled: false},
+			string(entitlements.JoinActiveSessions):     {Enabled: true},
+			string(entitlements.K8s):                    {Enabled: true},
+			string(entitlements.MobileDeviceManagement): {Enabled: false},
+			string(entitlements.OIDC):                   {Enabled: false},
+			string(entitlements.OktaSCIM):               {Enabled: false},
+			string(entitlements.OktaUserSync):           {Enabled: false},
+			string(entitlements.Policy):                 {Enabled: false},
+			// SAML-OSS fork: enabled (upstream: false).
+			string(entitlements.SAML):                       {Enabled: true},
 			string(entitlements.SessionLocks):               {Enabled: false},
 			string(entitlements.UpsellAlert):                {Enabled: false},
 			string(entitlements.UsageReporting):             {Enabled: false},
@@ -5202,6 +5211,13 @@ func TestGetWebConfig_WithEntitlements(t *testing.T) {
 	expectedCfg.JoinActiveSessions = false
 	expectedCfg.Edition = "" // testBuildType is empty
 	expectedCfg.TrustedDevices = true
+	// SAML-OSS fork: SetTestModules above replaces the fork's OSS entitlement
+	// defaults with an explicit set (DB/DeviceTrust/Desktop only), so the
+	// fork-enabled SAML and AccessRequests revert to disabled here.
+	expectedCfg.SAML = false
+	expectedCfg.AccessRequests = false
+	expectedCfg.Entitlements[string(entitlements.SAML)] = webclient.EntitlementInfo{Enabled: false}
+	expectedCfg.Entitlements[string(entitlements.AccessRequests)] = webclient.EntitlementInfo{Enabled: false}
 	expectedCfg.Entitlements[string(entitlements.App)] = webclient.EntitlementInfo{Enabled: false}
 	expectedCfg.Entitlements[string(entitlements.DB)] = webclient.EntitlementInfo{Enabled: true, Limit: 22}
 	expectedCfg.Entitlements[string(entitlements.DeviceTrust)] = webclient.EntitlementInfo{Enabled: true, Limit: 33}

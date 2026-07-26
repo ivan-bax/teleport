@@ -484,9 +484,12 @@ func TestAuthenticateWebUser_deviceWebToken(t *testing.T) {
 			// method itself always works.
 			require.NoError(t, err, "AuthenticateWebUser failed unexpectedly")
 
-			// Device requirement not calculated for OSS.
+			// SAML-OSS fork: upstream skips the device requirement calculation
+			// on OSS builds and leaves it UNSPECIFIED. This fork enables the
+			// DeviceTrust entitlement, so the requirement is calculated; with no
+			// role requiring a trusted device it resolves to NOT_REQUIRED.
 			assert.Equal(t,
-				types.TrustedDeviceRequirement_TRUSTED_DEVICE_REQUIREMENT_UNSPECIFIED,
+				types.TrustedDeviceRequirement_TRUSTED_DEVICE_REQUIREMENT_NOT_REQUIRED,
 				webSession.GetTrustedDeviceRequirement(),
 				"WebSession.TrustedDeviceRequirement mismatch",
 			)
@@ -5659,15 +5662,22 @@ func TestCreateAuthPreference(t *testing.T) {
 			},
 		},
 		{
-			name: "creation prevented when hardware key policy is set in open source",
+			// SAML-OSS fork: upstream rejects device trust mode on OSS builds.
+			// This fork enables the DeviceTrust entitlement in lib/modules, so
+			// setting the mode must succeed. If this starts failing, the
+			// entitlements patch was likely dropped during a rebase.
+			//
+			// (The upstream name for this case was a copy-paste of the hardware
+			// key case above; it has always exercised device trust.)
+			name: "creation allowed when device trust mode is set in open source (fork)",
 			preference: func(p types.AuthPreference) {
 				p.SetDeviceTrust(&types.DeviceTrust{
 					Mode: constants.DeviceTrustModeRequired,
 				})
 			},
 			assertion: func(t *testing.T, created types.AuthPreference, err error) {
-				assert.Nil(t, created)
-				require.True(t, trace.IsBadParameter(err), "got (%v), expected device trust mode conflict to prevent creation", err)
+				require.NoError(t, err, "got (%v), expected device trust mode to be allowed in this fork's OSS build", err)
+				require.NotNil(t, created)
 			},
 		},
 	}

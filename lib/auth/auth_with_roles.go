@@ -5421,7 +5421,6 @@ func checkRoleFeatureSupport(role types.Role) error {
 	options := role.GetOptions()
 	allowReq, allowRev := role.GetAccessRequestConditions(types.Allow), role.GetAccessReviewConditions(types.Allow)
 
-
 	switch {
 	case !features.AccessControls && options.MaxSessions > 0:
 		return trace.AccessDenied(

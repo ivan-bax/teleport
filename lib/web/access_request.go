@@ -33,22 +33,22 @@ import (
 // accessRequestResponse is the JSON representation of an access request
 // for the web UI frontend.
 type accessRequestResponse struct {
-	ID                 string                   `json:"id"`
-	State              string                   `json:"state"`
-	User               string                   `json:"user"`
-	Roles              []string                 `json:"roles"`
-	Created            time.Time                `json:"created"`
-	Expires            time.Time                `json:"expires"`
-	MaxDuration        *time.Time               `json:"maxDuration,omitempty"`
-	RequestTTL         time.Time                `json:"requestTTL"`
-	SessionTTL         *time.Time               `json:"sessionTTL,omitempty"`
-	RequestReason      string                   `json:"requestReason"`
-	ResolveReason      string                   `json:"resolveReason"`
-	Reviews            []accessReviewResponse   `json:"reviews"`
-	SuggestedReviewers []string                 `json:"suggestedReviewers"`
-	ThresholdNames     []string                 `json:"thresholdNames"`
-	Resources          []accessRequestResource  `json:"resources"`
-	AssumeStartTime    *time.Time               `json:"assumeStartTime,omitempty"`
+	ID                 string                  `json:"id"`
+	State              string                  `json:"state"`
+	User               string                  `json:"user"`
+	Roles              []string                `json:"roles"`
+	Created            time.Time               `json:"created"`
+	Expires            time.Time               `json:"expires"`
+	MaxDuration        *time.Time              `json:"maxDuration,omitempty"`
+	RequestTTL         time.Time               `json:"requestTTL"`
+	SessionTTL         *time.Time              `json:"sessionTTL,omitempty"`
+	RequestReason      string                  `json:"requestReason"`
+	ResolveReason      string                  `json:"resolveReason"`
+	Reviews            []accessReviewResponse  `json:"reviews"`
+	SuggestedReviewers []string                `json:"suggestedReviewers"`
+	ThresholdNames     []string                `json:"thresholdNames"`
+	Resources          []accessRequestResource `json:"resources"`
+	AssumeStartTime    *time.Time              `json:"assumeStartTime,omitempty"`
 }
 
 type accessReviewResponse struct {

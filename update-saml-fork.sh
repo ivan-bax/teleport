@@ -29,58 +29,68 @@ BRANCH_NAME="feature/saml-oss"
 # SHAs below are from feature/saml-oss after the v18.9.0 rebase (2026-06-19).
 CUSTOM_COMMITS=(
     # SAML support
-    "7b1f4b113f1"  # Enable SAML authentication in Teleport OSS
-    "46c6efa2270"  # Add test SAML configuration
+    "7921199ade2"  # Enable SAML authentication in Teleport OSS
+    "188bb3f1afb"  # Add test SAML configuration
 
     # CI/CD and build
-    "d12754090a5"  # Add script to rebase SAML patches onto new Teleport releases
-    "09b73a9664b"  # Add CI/CD pipeline to build Docker image with SAML support
-    "48c227fc4a6"  # Fix Dockerfile chmod outside RUN instruction
-    "5213f797188"  # Fix version detection in CI workflow
-    "1fe2c9f802f"  # Rebuild web UI from source instead of patching compiled bundle
-    "742e7736109"  # Fix Dockerfile to build web UI from source correctly
-    "5a2c70884e7"  # Add binary releases and install script
-    "7431d928726"  # Fix CI disk space: free runner space and strip Go debug symbols
-    "a39ed493c55"  # Fix release workflow version detection and binary extraction
+    "13fd84966ed"  # Add script to rebase SAML patches onto new Teleport releases
+    "a7ab96e2cdc"  # Add CI/CD pipeline to build Docker image with SAML support
+    "287ddf10674"  # Fix Dockerfile chmod outside RUN instruction
+    "571e792056c"  # Fix version detection in CI workflow
+    "a9aeb3098a2"  # Rebuild web UI from source instead of patching compiled bundle
+    "cdddcb25d02"  # Fix Dockerfile to build web UI from source correctly
+    "f7fd4d21400"  # Add binary releases and install script
+    "531f3b9792e"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "c9a0999718e"  # Fix release workflow version detection and binary extraction
 
     # Web UI
-    "e7452939003"  # Add SAML connector editor to web UI
+    "3b6ab7a485b"  # Add SAML connector editor to web UI
 
     # Device trust
-    "735423967f1"  # Enable device trust registration in Teleport OSS
-    "acab4a144d7"  # Fix device authentication to return real augmented certificates
-    "29f9b7f3e74"  # Disable global device trust mode at proxy transport level
-    "92409da7382"  # Add second factor and webauthn config to test SAML config
-    "8bfdda29052"  # Enable trusted devices UI in Teleport OSS
-    "cc21a8fe583"  # Fix device enrollment not setting owner field
+    "a6138c8771a"  # Enable device trust registration in Teleport OSS
+    "54881f14ead"  # Fix device authentication to return real augmented certificates
+    "6c300d10281"  # Disable global device trust mode at proxy transport level
+    "b18144ccc10"  # Add second factor and webauthn config to test SAML config
+    "0c14cf8df25"  # Enable trusted devices UI in Teleport OSS
+    "22a1827ce1c"  # Fix device enrollment not setting owner field
 
     # Documentation
-    "170e382f4af"  # add documentation on releases
+    "812c4ee7999"  # add documentation on releases
 
     # Role options
-    "5bd0f466fc9"  # Remove enterprise restriction for pin_source_ip role option
+    "e95fc7ba822"  # Remove enterprise restriction for pin_source_ip role option
 
     # Access requests
-    "91dbcce2d49"  # Enable access requests feature in Teleport OSS
-    "48d8f266abd"  # add more views to access request view
-    "11d18e6b0c8"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
-    "670997efa53"  # Fix access requests web UI for v18.9.0 design system API
+    "0cec1bba59d"  # Enable access requests feature in Teleport OSS
+    "6d72489be73"  # add more views to access request view
+    "91ac8f12eb4"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
 
     # Fork-specific CI cleanup
-    "bc3ddda3e4c"  # remove unused ci/cd and update to make work for this fork
+    "3c9ca8cfd6b"  # remove unused ci/cd and update to make work for this fork
 
     # Login rules
-    "9c0d12a8c5c"  # Enable login rules feature in Teleport OSS
+    "46fca13be59"  # Enable login rules feature in Teleport OSS
 
     # Access monitoring rules
-    "b5d8bafb94b"  # Add access monitoring rules UI and web API for OSS
+    "75a57a739a5"  # Add access monitoring rules UI and web API for OSS
 
     # Cross-origin logout
-    "2ab65289b45"  # Add cross-origin logout endpoint with origin allowlist
-    "95b0271e8ca"  # Use DELETE for the cross-origin logout endpoint
+    "312ff710389"  # Add cross-origin logout endpoint with origin allowlist
+    "69e53a15a5b"  # Use DELETE for the cross-origin logout endpoint
 
     # v18.9.0 build fixes
-    "86de258eb49"  # Fix Docker web build for v18.9.0 (Vite 8, removed .npmrc/web-patches)
+    "e62f526f8e8"  # Fix access requests web UI for v18.9.0 design system API
+    "f54ac047a87"  # Fix Docker web build for v18.9.0 (Vite 8, removed .npmrc/web-patches)
+    "fcb0990a680"  # chore: update CUSTOM_COMMITS for v18.9.0 rebase
+
+    # SAML audit log fix
+    "3bef5a9db52"  # fix the saml issue of don't getting the real ip in the audit logs
+
+    # Documentation
+    "baa015cef3e"  # docs: rewrite README as fork front-door
+
+    # v18.10.0 build fixes
+    "d2265a76132"  # Fix Docker web build for v18.10.0: bump wasm-bindgen CLI to 0.2.122
 )
 
 RED='\033[0;31m'

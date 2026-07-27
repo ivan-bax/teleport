@@ -31,15 +31,18 @@ export function fetchAccessRequests(): Promise<AccessRequest[]> {
   });
 }
 
-export function fetchAccessRequest(
-  requestId: string
-): Promise<AccessRequest> {
+export function fetchAccessRequest(requestId: string): Promise<AccessRequest> {
   return api.get(cfg.getAccessRequestUrl(requestId)).then(makeAccessRequest);
 }
 
 export function createAccessRequest(data: {
   roles?: string[];
-  resourceIds?: { kind: string; name: string; clusterName: string; subResourceName?: string }[];
+  resourceIds?: {
+    kind: string;
+    name: string;
+    clusterName: string;
+    subResourceName?: string;
+  }[];
   reason?: string;
   suggestedReviewers?: string[];
   maxDuration?: Date;

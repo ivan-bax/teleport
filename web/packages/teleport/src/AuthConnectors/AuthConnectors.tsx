@@ -36,10 +36,17 @@ import { FeatureBox, FeatureHeaderTitle } from 'teleport/components/Layout';
 import { Route, Switch } from 'teleport/components/Router';
 import useResources from 'teleport/components/useResources';
 import cfg from 'teleport/config';
-import { DefaultAuthConnector, KindAuthConnectors, Resource } from 'teleport/services/resources';
+import {
+  DefaultAuthConnector,
+  KindAuthConnectors,
+  Resource,
+} from 'teleport/services/resources';
 import useTeleport from 'teleport/useTeleport';
 
-import { GitHubConnectorEditor, SamlConnectorEditor } from './AuthConnectorEditor';
+import {
+  GitHubConnectorEditor,
+  SamlConnectorEditor,
+} from './AuthConnectorEditor';
 import { ConnectorList } from './ConnectorList';
 import DeleteConnectorDialog from './DeleteConnectorDialog';
 import EmptyList from './EmptyList';
@@ -98,7 +105,9 @@ export function AuthConnectors() {
     useCallback(async () => {
       const [githubRes, samlConnectors] = await Promise.all([
         ctx.resourceService.fetchGithubConnectors(),
-        ctx.resourceService.fetchSamlConnectors().catch(() => [] as Resource<'saml'>[]),
+        ctx.resourceService
+          .fetchSamlConnectors()
+          .catch(() => [] as Resource<'saml'>[]),
       ]);
       const allConnectors: Resource<KindAuthConnectors>[] = [
         ...githubRes.connectors,
@@ -127,9 +136,10 @@ export function AuthConnectors() {
   function remove(name: string) {
     // Find the item to determine its kind for proper deletion
     const item = items.find(i => i.name === name);
-    const deletePromise = item?.kind === 'saml'
-      ? ctx.resourceService.deleteSamlConnector(name)
-      : ctx.resourceService.deleteGithubConnector(name);
+    const deletePromise =
+      item?.kind === 'saml'
+        ? ctx.resourceService.deleteSamlConnector(name)
+        : ctx.resourceService.deleteGithubConnector(name);
     return deletePromise.then(fetchConnectors);
   }
 

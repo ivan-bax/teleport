@@ -17,8 +17,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import styled from 'styled-components';
 import { useParams, useHistory } from 'react-router';
+import styled from 'styled-components';
 
 import {
   Alert,
@@ -36,8 +36,15 @@ import {
 } from 'design';
 import Table, { Cell } from 'design/DataTable';
 import { displayDateTime } from 'design/datetime';
+import Dialog, {
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from 'design/Dialog';
 import { TabBorder, TabContainer, TabsContainer } from 'design/Tabs/Tabs';
 import { useSlidingBottomBorderTabs } from 'design/Tabs/useSlidingBottomBorderTabs';
+import { requestMatcher } from 'shared/components/AccessRequests/NewRequest/matcher';
 import {
   renderIdCell,
   renderStatusCell,
@@ -49,18 +56,11 @@ import {
   ButtonPromotedInfo,
   getResourcesOrRolesFromRequest,
 } from 'shared/components/AccessRequests/Shared/Shared';
-import { requestMatcher } from 'shared/components/AccessRequests/NewRequest/matcher';
 import { useAsync, makeEmptyAttempt, Attempt } from 'shared/hooks/useAsync';
 import { AccessRequest, canAssumeNow } from 'shared/services/accessRequests';
-import Dialog, {
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from 'design/Dialog';
 
-import cfg from 'teleport/config';
 import { useTeleport } from 'teleport';
+import cfg from 'teleport/config';
 import {
   fetchAccessRequests,
   fetchAccessRequest,
@@ -88,7 +88,9 @@ export function AccessRequestsPage() {
     return (
       <RequestDetailView
         requestId={requestId}
-        onBack={() => history.push(cfg.routes.requests.replace(':requestId?', ''))}
+        onBack={() =>
+          history.push(cfg.routes.requests.replace(':requestId?', ''))
+        }
       />
     );
   }
@@ -109,13 +111,10 @@ function RequestListView() {
 
   const [fetchAttempt, fetchRequests] = useAsync(fetchAccessRequests);
   const [assumeAttempt, runAssumeRole] = useAsync(
-    useCallback(
-      async (requestId: string) => {
-        await session.renewSession({ requestId });
-        window.location.reload();
-      },
-      []
-    )
+    useCallback(async (requestId: string) => {
+      await session.renewSession({ requestId });
+      window.location.reload();
+    }, [])
   );
 
   useEffect(() => {
@@ -151,7 +150,9 @@ function RequestListView() {
         return requests.filter(r => {
           if (r.user === username) return false;
           const reviewed = r.reviews.find(rev => rev.author === username);
-          return reviewed ? reviewed.state === 'PENDING' : r.state === 'PENDING';
+          return reviewed
+            ? reviewed.state === 'PENDING'
+            : r.state === 'PENDING';
         });
       case 'reviewed':
         return requests.filter(r =>
@@ -188,7 +189,12 @@ function RequestListView() {
         </ButtonPrimary>
       </Flex>
 
-      <StyledTabsContainer ref={parentRef} withBottomBorder mb={3} role="tablist">
+      <StyledTabsContainer
+        ref={parentRef}
+        withBottomBorder
+        mb={3}
+        role="tablist"
+      >
         {TAB_IDS.map(tabId => (
           <StyledTabContainer
             key={tabId}
@@ -268,9 +274,7 @@ function RequestListView() {
                 req => runAssumeRole(req.id),
                 assumeAttempt,
                 id =>
-                  history.push(
-                    cfg.routes.requests.replace(':requestId?', id)
-                  ),
+                  history.push(cfg.routes.requests.replace(':requestId?', id)),
                 () => {}
               ),
           },
@@ -373,7 +377,9 @@ function NewAccessRequestDialog({
           onClick={handleSubmit}
           disabled={createAttempt.status === 'processing' || !roles.trim()}
         >
-          {createAttempt.status === 'processing' ? 'Submitting...' : 'Submit Request'}
+          {createAttempt.status === 'processing'
+            ? 'Submitting...'
+            : 'Submit Request'}
         </ButtonPrimary>
         <ButtonSecondary onClick={onClose}>Cancel</ButtonSecondary>
       </DialogFooter>
@@ -548,10 +554,7 @@ function RequestDetailView({
         <DetailRow label="ID" value={request.id} />
         <DetailRow label="State" value={request.state} />
         <DetailRow label="User" value={request.user} />
-        <DetailRow
-          label="Roles"
-          value={request.roles?.join(', ') || 'None'}
-        />
+        <DetailRow label="Roles" value={request.roles?.join(', ') || 'None'} />
         {request.resources.length > 0 && (
           <DetailRow
             label="Resources"
@@ -581,8 +584,7 @@ function RequestDetailView({
                 mb={2}
                 borderRadius={2}
                 css={`
-                  background: ${props =>
-                    props.theme.colors.spotBackground[0]};
+                  background: ${props => props.theme.colors.spotBackground[0]};
                 `}
               >
                 <Text bold>{review.author}</Text>

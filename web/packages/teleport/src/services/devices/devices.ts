@@ -40,7 +40,8 @@ function makeDevice(json: any): TrustedDevice {
     id: json.id || '',
     assetTag: json.assetTag || '',
     osType: (json.osType as TrustedDeviceOSType) || 'Linux',
-    enrollStatus: json.enrollStatus === 'enrolled' ? 'enrolled' : 'not enrolled',
+    enrollStatus:
+      json.enrollStatus === 'enrolled' ? 'enrolled' : 'not enrolled',
     owner: json.owner || '',
   };
 }

@@ -219,9 +219,12 @@ function RuleEditorDialog({
       if (!rule) {
         return DEFAULT_RULE_YAML;
       }
-      return yamlService.stringify(YamlSupportedResourceKind.AccessMonitoringRule, {
-        resource: rule,
-      });
+      return yamlService.stringify(
+        YamlSupportedResourceKind.AccessMonitoringRule,
+        {
+          resource: rule,
+        }
+      );
     }, [rule])
   );
 
@@ -254,7 +257,11 @@ function RuleEditorDialog({
   }
 
   return (
-    <Dialog open={true} onClose={onClose} dialogCss={() => ({ width: '700px' })}>
+    <Dialog
+      open={true}
+      onClose={onClose}
+      dialogCss={() => ({ width: '700px' })}
+    >
       <DialogHeader>
         <DialogTitle>
           {isNew ? 'New Access Monitoring Rule' : `Edit ${rule.metadata?.name}`}

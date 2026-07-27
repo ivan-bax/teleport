@@ -21,11 +21,11 @@ import React, { type JSX } from 'react';
 import * as Icons from 'design/Icon';
 import { IconProps } from 'design/Icon/Icon';
 
+import cfg from 'teleport/config';
 import {
   NotificationSubKind,
   Notification as NotificationType,
 } from 'teleport/services/notifications';
-import cfg from 'teleport/config';
 import { Label } from 'teleport/types';
 
 /**

@@ -52,8 +52,8 @@ import {
 } from 'teleport/Navigation/categories';
 import { ListSessionRecordingsRoute } from 'teleport/SessionRecordings/list/ListSessionRecordingsRoute';
 
-import { AccessRequestsPage } from './AccessRequests';
 import { AccessMonitoringPage } from './AccessMonitoring';
+import { AccessRequestsPage } from './AccessRequests';
 import { AccountPage } from './Account';
 import { AuditContainer as Audit } from './Audit';
 import { AuthConnectorsContainer as AuthConnectors } from './AuthConnectors';
@@ -62,7 +62,7 @@ import { Bots } from './Bots';
 import { AddBots } from './Bots/Add';
 import { BotDetails } from './Bots/Details/BotDetails';
 import { Clusters } from './Clusters';
-import { DeviceTrust, DeviceTrustLocked } from './DeviceTrust';
+import { DeviceTrust } from './DeviceTrust';
 import { Discover } from './Discover';
 import { Instances } from './Instances/Instances';
 import { Integrations } from './Integrations';

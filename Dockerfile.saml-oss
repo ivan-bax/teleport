@@ -58,6 +58,17 @@ RUN cargo build --package ironrdp --lib --target wasm32-unknown-unknown --releas
     echo '{"name":"ironrdp","version":"0.1.0","module":"ironrdp.js","types":"ironrdp.d.ts","sideEffects":true}' \
         > web/packages/shared/libs/ironrdp/pkg/package.json
 
+# Stage the edition logo SVGs. Since v18.10.0 the UI fetches the login/hero logo
+# from /web/app/logo-{light,dark}.svg instead of importing it, and upstream's
+# `make ensure-webassets` copies the right edition's SVG into
+# web/packages/teleport/public/app/ just before building. Those two files are
+# gitignored, so they are absent from the source tree and this Dockerfile — which
+# calls vite directly rather than going through the Makefile — must do the copy
+# itself, or the login page 404s on its logo. AGPL is what the Makefile picks for
+# any non-gravitational build; swap to community-{light,dark}.svg for that logo.
+RUN cp web/packages/design/src/assets/images/agpl-light.svg web/packages/teleport/public/app/logo-light.svg && \
+    cp web/packages/design/src/assets/images/agpl-dark.svg  web/packages/teleport/public/app/logo-dark.svg
+
 # Build web UI (OSS). Run vite via `pnpm --filter ... exec` from the workspace root
 # (not a bare `npx vite build`) so pnpm puts its hoisted store on the module
 # resolution path — Vite 8 (v18.9.0) loads its bundled config from a temp file under

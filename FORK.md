@@ -79,6 +79,14 @@ Do these by hand before rebasing; CI cannot check them.
    directly rather than `make ensure-wasm-deps`, so it does not self-correct.
    The `pins` CI job enforces this, but checking early avoids a wasted build.
 
+3. **Re-check what `make ensure-webassets` stages** into
+   `web/packages/teleport/public/`. `Dockerfile.saml-oss` runs `vite build`
+   directly, so anything that target copies in just before the build has to be
+   duplicated in the Dockerfile. Today that is the edition logo
+   (`logo-{light,dark}.svg`, added upstream in v18.10.0); if upstream adds more
+   staged assets, they silently 404 in the deployed UI instead of failing the
+   build.
+
 ## Git remotes
 
 | Remote | Repository |

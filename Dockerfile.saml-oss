@@ -19,6 +19,15 @@ ENV RUST_VERSION=1.81.0
 ENV WASM_BINDGEN_VERSION=0.2.122
 ENV WASM_OPT_VERSION=0.116.1
 
+# Since v18.11.0 ironrdp pulls in zstd-sys, a C dependency, so the wasm32 build
+# needs clang and llvm-ar (upstream's buildbox ships them; see `build-ironrdp-wasm`
+# in the Makefile).
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends clang llvm && \
+    rm -rf /var/lib/apt/lists/*
+ENV CC_wasm32_unknown_unknown=clang
+ENV AR_wasm32_unknown_unknown=llvm-ar
+
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
         sh -s -- -y --default-toolchain stable && \
     . "$HOME/.cargo/env" && \

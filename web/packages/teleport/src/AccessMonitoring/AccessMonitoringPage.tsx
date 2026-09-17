@@ -37,6 +37,7 @@ import Dialog, {
   DialogHeader,
   DialogTitle,
 } from 'design/Dialog';
+// eslint-disable-next-line no-restricted-imports -- FIXME
 import { useAsync } from 'shared/hooks/useAsync';
 
 import {
@@ -77,11 +78,46 @@ export function AccessMonitoringPage() {
   );
   const [deleting, setDeleting] = useState<AccessMonitoringRule | null>(null);
 
+  // Writes go to the backend but the list is served from the auth cache, which
+  // trails the write by a moment. Keep the rendered list in local state so a
+  // create/update/delete shows up immediately, then reconcile against the
+  // server once the cache has caught up.
+  const [rules, setRules] = useState<AccessMonitoringRule[]>([]);
+
+  useEffect(() => {
+    if (fetchAttempt.status === 'success') {
+      setRules(fetchAttempt.data || []);
+    }
+  }, [fetchAttempt.status, fetchAttempt.data]);
+
   useEffect(() => {
     fetchRules();
   }, []);
 
-  const rules = fetchAttempt.data || [];
+  // Refetch until the cache reflects the write, or we run out of attempts.
+  const reconcile = useCallback(
+    async (settled: (rules: AccessMonitoringRule[]) => boolean) => {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const [fetched, err] = await fetchRules();
+        if (err) {
+          return;
+        }
+        if (settled(fetched || [])) {
+          return;
+        }
+      }
+    },
+    [fetchRules]
+  );
+
+  const upsertRule = useCallback((saved: AccessMonitoringRule) => {
+    const name = saved.metadata?.name;
+    setRules(current => {
+      const without = current.filter(rule => rule.metadata?.name !== name);
+      return [...without, saved];
+    });
+  }, []);
 
   return (
     <FeatureBox>
@@ -105,13 +141,13 @@ export function AccessMonitoringPage() {
         </Alert>
       )}
 
-      {fetchAttempt.status === 'processing' && (
+      {fetchAttempt.status === 'processing' && rules.length === 0 && (
         <Box textAlign="center" m={10}>
           <Indicator />
         </Box>
       )}
 
-      {fetchAttempt.status === 'success' && (
+      {(fetchAttempt.status === 'success' || rules.length > 0) && (
         <Table<AccessMonitoringRule>
           data={rules}
           emptyText="No access monitoring rules found"
@@ -169,9 +205,19 @@ export function AccessMonitoringPage() {
         <RuleEditorDialog
           rule={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
-          onSaved={() => {
+          onSaved={saved => {
             setEditing(null);
-            fetchRules();
+            upsertRule(saved);
+            const name = saved.metadata?.name;
+            // An edit leaves the rule present either way, so compare the spec
+            // rather than just looking the name up.
+            reconcile(fetched => {
+              const found = fetched.find(rule => rule.metadata?.name === name);
+              return (
+                !!found &&
+                JSON.stringify(found.spec) === JSON.stringify(saved.spec)
+              );
+            });
           }}
         />
       )}
@@ -181,8 +227,14 @@ export function AccessMonitoringPage() {
           rule={deleting}
           onClose={() => setDeleting(null)}
           onDeleted={() => {
+            const name = deleting.metadata?.name;
             setDeleting(null);
-            fetchRules();
+            setRules(current =>
+              current.filter(rule => rule.metadata?.name !== name)
+            );
+            reconcile(
+              fetched => !fetched.some(rule => rule.metadata?.name === name)
+            );
           }}
         />
       )}
@@ -208,7 +260,7 @@ function RuleEditorDialog({
 }: {
   rule: AccessMonitoringRule | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (saved: AccessMonitoringRule) => void;
 }) {
   const isNew = !rule;
   const [yaml, setYaml] = useState('');
@@ -250,9 +302,9 @@ function RuleEditorDialog({
   );
 
   async function handleSave() {
-    const [, err] = await runSave();
+    const [saved, err] = await runSave();
     if (!err) {
-      onSaved();
+      onSaved(saved);
     }
   }
 

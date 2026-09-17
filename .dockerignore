@@ -6,3 +6,4 @@ e/
 test-saml/data
 *.gz
 *.zip
+saml-oss-test-configs/

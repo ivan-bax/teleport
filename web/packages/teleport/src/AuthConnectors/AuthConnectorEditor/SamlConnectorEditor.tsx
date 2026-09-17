@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router';
 
+// eslint-disable-next-line no-restricted-imports -- FIXME
 import { useAsync } from 'shared/hooks/useAsync';
 
 import cfg from 'teleport/config';

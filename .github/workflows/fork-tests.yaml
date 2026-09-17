@@ -169,8 +169,12 @@ jobs:
       - name: Type check
         run: pnpm type-check
 
+      # Upstream's `pnpm lint` also runs knip (added in v18.11), which reports
+      # every export the empty e/ submodule no longer consumes, plus the
+      # unresolved e/web import in build/jest/setupTests.ts. Run the two checks
+      # that are meaningful for this fork instead.
       - name: Lint and format check
-        run: pnpm lint
+        run: pnpm oxlint && pnpm format-check
 
       - name: Unit tests
         run: pnpm test

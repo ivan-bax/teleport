@@ -34,6 +34,7 @@ import {
   Text,
   TextArea,
 } from 'design';
+import { CheckboxInput } from 'design/Checkbox';
 import Table, { Cell } from 'design/DataTable';
 import { displayDateTime } from 'design/datetime';
 import Dialog, {
@@ -56,6 +57,7 @@ import {
   ButtonPromotedInfo,
   getResourcesOrRolesFromRequest,
 } from 'shared/components/AccessRequests/Shared/Shared';
+// eslint-disable-next-line no-restricted-imports -- FIXME
 import { useAsync, makeEmptyAttempt, Attempt } from 'shared/hooks/useAsync';
 import { AccessRequest, canAssumeNow } from 'shared/services/accessRequests';
 
@@ -309,14 +311,41 @@ function NewAccessRequestDialog({
   onClose: () => void;
   onCreated: (created: AccessRequest) => void;
 }) {
-  const [roles, setRoles] = useState('');
+  const ctx = useTeleport();
+  // The user context already carries the roles this user is allowed to
+  // request (the same list `tsh request search --roles` returns), so the
+  // picker needs no extra round trip.
+  const requestableRoles = ctx.storeUser.getRequestableRoles() || [];
+  const hasRequestableRoles = requestableRoles.length > 0;
+
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
+  // Fallback for the case where the server reports no requestable roles, so a
+  // user with a wildcard request rule can still name one by hand.
+  const [typedRoles, setTypedRoles] = useState('');
   const [reason, setReason] = useState('');
-  const [createAttempt, runCreate] = useAsync(
-    useCallback(async () => {
-      const roleList = roles
+
+  const roleList = hasRequestableRoles
+    ? selectedRoles
+    : typedRoles
         .split(',')
         .map(r => r.trim())
         .filter(Boolean);
+
+  const filteredRoles = requestableRoles.filter(role =>
+    role.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
+  function toggleRole(role: string) {
+    setSelectedRoles(current =>
+      current.includes(role)
+        ? current.filter(r => r !== role)
+        : [...current, role]
+    );
+  }
+
+  const [createAttempt, runCreate] = useAsync(
+    useCallback(async () => {
       if (roleList.length === 0) {
         throw new Error('At least one role is required');
       }
@@ -324,7 +353,7 @@ function NewAccessRequestDialog({
         roles: roleList,
         reason: reason || undefined,
       });
-    }, [roles, reason])
+    }, [roleList, reason])
   );
 
   async function handleSubmit() {
@@ -350,13 +379,40 @@ function NewAccessRequestDialog({
         )}
         <Box mb={3}>
           <Text mb={1} bold>
-            Roles (comma-separated)
+            Roles
           </Text>
-          <Input
-            value={roles}
-            onChange={e => setRoles(e.target.value)}
-            placeholder="e.g. editor, access"
-          />
+          {hasRequestableRoles ? (
+            <>
+              {requestableRoles.length > 5 && (
+                <Input
+                  mb={2}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search roles"
+                />
+              )}
+              <RoleList>
+                {filteredRoles.map(role => (
+                  <RoleOption key={role}>
+                    <CheckboxInput
+                      checked={selectedRoles.includes(role)}
+                      onChange={() => toggleRole(role)}
+                    />
+                    <Text>{role}</Text>
+                  </RoleOption>
+                ))}
+                {filteredRoles.length === 0 && (
+                  <Text color="text.slightlyMuted">No roles match.</Text>
+                )}
+              </RoleList>
+            </>
+          ) : (
+            <Input
+              value={typedRoles}
+              onChange={e => setTypedRoles(e.target.value)}
+              placeholder="e.g. editor, access"
+            />
+          )}
         </Box>
         <Box mb={3}>
           <Text mb={1} bold>
@@ -375,7 +431,9 @@ function NewAccessRequestDialog({
         <ButtonPrimary
           mr={3}
           onClick={handleSubmit}
-          disabled={createAttempt.status === 'processing' || !roles.trim()}
+          disabled={
+            createAttempt.status === 'processing' || roleList.length === 0
+          }
         >
           {createAttempt.status === 'processing'
             ? 'Submitting...'
@@ -757,4 +815,22 @@ const StyledTabContainer = styled(TabContainer)`
   padding: ${p => p.theme.space[2]}px ${p => p.theme.space[3]}px;
   font-weight: ${p => p.theme.fontWeights.medium};
   font-size: ${p => p.theme.fontSizes[2]}px;
+`;
+
+const RoleList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${p => p.theme.space[1]}px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: ${p => p.theme.space[2]}px;
+  border: 1px solid ${p => p.theme.colors.interactive.tonal.neutral[2]};
+  border-radius: ${p => p.theme.radii[2]}px;
+`;
+
+const RoleOption = styled.label`
+  display: flex;
+  align-items: center;
+  gap: ${p => p.theme.space[2]}px;
+  cursor: pointer;
 `;

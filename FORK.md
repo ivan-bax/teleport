@@ -75,6 +75,14 @@ Do these by hand before rebasing; CI cannot check them.
    git show vX.Y.Z:api/version.go | grep Version           # does it match the tag?
    ```
 
+   A third pattern appeared with `v18.11.x`, when upstream started exporting
+   releases from a private repo: `v18.11.1` has correct version constants and a
+   real changelog but no `branch/v18.11.1`, and its only commit on top of
+   `v18.11.0` is the version bump. None of the changelog's fixes are in the
+   public code (and `v18.11.0` itself still reports `18.10.7`). The fork was
+   rebased onto it anyway for the 18.10.1–18.10.7 security fixes; spot-check a
+   changelog item with `git grep` to know what a tag really contains.
+
 2. **Re-check the WASM pins** in `Dockerfile.saml-oss`. It calls `wasm-bindgen`
    directly rather than `make ensure-wasm-deps`, so it does not self-correct.
    The `pins` CI job enforces this, but checking early avoids a wasted build.

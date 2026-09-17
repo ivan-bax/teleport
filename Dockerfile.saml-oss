@@ -13,7 +13,7 @@ FROM node:24.13.0-bookworm AS webui
 # then add 1.81.0 as the toolchain for compiling the WASM module.
 # WASM_BINDGEN_VERSION must match the wasm-bindgen crate version in Cargo.lock
 # (`make print-wasm-bindgen-version`), otherwise the wasm-bindgen CLI aborts with a
-# schema-version mismatch. Bump it on every upstream rebase. v18.10.0: 0.2.122.
+# schema-version mismatch. Bump it on every upstream rebase. v18.10.0 and v18.11.1: 0.2.122.
 # WASM_OPT_VERSION must match `make -C build.assets print-wasm-opt-version`.
 ENV RUST_VERSION=1.81.0
 ENV WASM_BINDGEN_VERSION=0.2.122

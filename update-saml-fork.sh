@@ -26,71 +26,85 @@ UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-origin}"
 BRANCH_NAME="feature/saml-oss"
 
 # All custom commits to cherry-pick, in order (update these if you amend them)
-# SHAs below are from feature/saml-oss after the v18.9.0 rebase (2026-06-19).
+# SHAs below are from feature/saml-oss after the v18.11.1 rebase (2026-09-17).
 CUSTOM_COMMITS=(
     # SAML support
-    "7921199ade2"  # Enable SAML authentication in Teleport OSS
-    "188bb3f1afb"  # Add test SAML configuration
+    "996ca9a964b"  # Enable SAML authentication in Teleport OSS
+    "32d5f31ccb5"  # Add test SAML configuration
 
     # CI/CD and build
-    "13fd84966ed"  # Add script to rebase SAML patches onto new Teleport releases
-    "a7ab96e2cdc"  # Add CI/CD pipeline to build Docker image with SAML support
-    "287ddf10674"  # Fix Dockerfile chmod outside RUN instruction
-    "571e792056c"  # Fix version detection in CI workflow
-    "a9aeb3098a2"  # Rebuild web UI from source instead of patching compiled bundle
-    "cdddcb25d02"  # Fix Dockerfile to build web UI from source correctly
-    "f7fd4d21400"  # Add binary releases and install script
-    "531f3b9792e"  # Fix CI disk space: free runner space and strip Go debug symbols
-    "c9a0999718e"  # Fix release workflow version detection and binary extraction
+    "ffec4dd2634"  # Add script to rebase SAML patches onto new Teleport releases
+    "75fbc69cf49"  # Add CI/CD pipeline to build Docker image with SAML support
+    "c119be6dd8b"  # Fix Dockerfile chmod outside RUN instruction
+    "45557305f7b"  # Fix version detection in CI workflow
+    "a4312433798"  # Rebuild web UI from source instead of patching compiled bundle
+    "5849b4d304c"  # Fix Dockerfile to build web UI from source correctly
+    "26b990fb406"  # Add binary releases and install script
+    "eb5bd62574d"  # Fix CI disk space: free runner space and strip Go debug symbols
+    "1f9ee48266b"  # Fix release workflow version detection and binary extraction
 
     # Web UI
-    "3b6ab7a485b"  # Add SAML connector editor to web UI
+    "a5fd12d4f1f"  # Add SAML connector editor to web UI
 
     # Device trust
-    "a6138c8771a"  # Enable device trust registration in Teleport OSS
-    "54881f14ead"  # Fix device authentication to return real augmented certificates
-    "6c300d10281"  # Disable global device trust mode at proxy transport level
-    "b18144ccc10"  # Add second factor and webauthn config to test SAML config
-    "0c14cf8df25"  # Enable trusted devices UI in Teleport OSS
-    "22a1827ce1c"  # Fix device enrollment not setting owner field
+    "ad2549839f0"  # Enable device trust registration in Teleport OSS
+    "88a1cc8a65c"  # Fix device authentication to return real augmented certificates
+    "c33a412add6"  # Disable global device trust mode at proxy transport level
+    "357eedf7c0e"  # Add second factor and webauthn config to test SAML config
+    "cd5a4020809"  # Enable trusted devices UI in Teleport OSS
+    "31108fb4b74"  # Fix device enrollment not setting owner field
 
     # Documentation
-    "812c4ee7999"  # add documentation on releases
+    "4f99b560348"  # add documentation on releases
 
     # Role options
-    "e95fc7ba822"  # Remove enterprise restriction for pin_source_ip role option
+    "38e0cc57ab3"  # Remove enterprise restriction for pin_source_ip role option
 
     # Access requests
-    "0cec1bba59d"  # Enable access requests feature in Teleport OSS
-    "6d72489be73"  # add more views to access request view
-    "91ac8f12eb4"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
+    "d392ba3a07f"  # Enable access requests feature in Teleport OSS
+    "16de4bda31d"  # add more views to access request view
+    "bbc007d5541"  # Fix access request build: wrap ResourceIDs as ResourceAccessIDs
 
     # Fork-specific CI cleanup
-    "3c9ca8cfd6b"  # remove unused ci/cd and update to make work for this fork
+    "9e8ac8545d0"  # remove unused ci/cd and update to make work for this fork
 
     # Login rules
-    "46fca13be59"  # Enable login rules feature in Teleport OSS
+    "29fa059392c"  # Enable login rules feature in Teleport OSS
 
     # Access monitoring rules
-    "75a57a739a5"  # Add access monitoring rules UI and web API for OSS
+    "27045f895cf"  # Add access monitoring rules UI and web API for OSS
 
     # Cross-origin logout
-    "312ff710389"  # Add cross-origin logout endpoint with origin allowlist
-    "69e53a15a5b"  # Use DELETE for the cross-origin logout endpoint
+    "f7b075cc5a3"  # Add cross-origin logout endpoint with origin allowlist
+    "51cb404de9f"  # Use DELETE for the cross-origin logout endpoint
 
     # v18.9.0 build fixes
-    "e62f526f8e8"  # Fix access requests web UI for v18.9.0 design system API
-    "f54ac047a87"  # Fix Docker web build for v18.9.0 (Vite 8, removed .npmrc/web-patches)
-    "fcb0990a680"  # chore: update CUSTOM_COMMITS for v18.9.0 rebase
+    "176e4bb1223"  # Fix access requests web UI for v18.9.0 design system API
+    "c685fa3bb44"  # Fix Docker web build for v18.9.0 (Vite 8, removed .npmrc/web-patches)
+    "ba8758f277c"  # chore: update CUSTOM_COMMITS for v18.9.0 rebase
 
     # SAML audit log fix
-    "3bef5a9db52"  # fix the saml issue of don't getting the real ip in the audit logs
+    "cd15b1a910f"  # fix the saml issue of don't getting the real ip in the audit logs
 
     # Documentation
-    "baa015cef3e"  # docs: rewrite README as fork front-door
+    "7ac27adfe5f"  # docs: rewrite README as fork front-door
 
     # v18.10.0 build fixes
-    "d2265a76132"  # Fix Docker web build for v18.10.0: bump wasm-bindgen CLI to 0.2.122
+    "04590d1eaf8"  # Fix Docker web build for v18.10.0: bump wasm-bindgen CLI to 0.2.122
+
+    # Post-v18.10.0 hardening: tests, formatting, CI gate, build fixes
+    "d2eca5ec00e"  # chore: update CUSTOM_COMMITS for v18.10.0 rebase
+    "a98532e53cd"  # style: gofmt fork-modified Go files
+    "3e27c1fe29b"  # test: align upstream OSS assertions with this fork's contract
+    "b4b8cb34a69"  # ci: replace upstream test workflows with a fork regression gate
+    "8ef66e76721"  # test: cover the access review watcher
+    "c0898f5b68b"  # test: cover the OSS SAML auth service
+    "9e8c4991187"  # test: cover the access request web API response mapper
+    "91b96b26f3a"  # test: cover the access monitoring rule web API
+    "b7e51e26d6f"  # test: cover the OSS device trust service store
+    "4d4e9063233"  # fix: drop the dead DeviceTrustLocked import
+    "f20526b7115"  # style: format fork-modified web files
+    "cc6f91a0811"  # fix: stage the edition logo SVGs before the Docker web build
 )
 
 RED='\033[0;31m'

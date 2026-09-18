@@ -105,6 +105,9 @@ CUSTOM_COMMITS=(
     "4d4e9063233"  # fix: drop the dead DeviceTrustLocked import
     "f20526b7115"  # style: format fork-modified web files
     "cc6f91a0811"  # fix: stage the edition logo SVGs before the Docker web build
+    "8db7a1e6afe"  # chore: update CUSTOM_COMMITS for v18.11.1 rebase
+    "a99579aa791"  # fix: install clang and llvm for the v18.11 ironrdp WASM build
+    "856c1818808"  # fix: pick requestable roles in the web UI and refresh monitoring rules
 )
 
 RED='\033[0;31m'

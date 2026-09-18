@@ -117,7 +117,7 @@ When upstream publishes a new release (e.g. `v18.8.0`):
 The script will:
 1. Fetch tags from `origin` (gravitational/teleport)
 2. Create a temporary branch from the target tag
-3. Cherry-pick all 16 custom commits in order
+3. Cherry-pick all custom commits in order (the CUSTOM_COMMITS array)
 4. Rename the old `feature/saml-oss` and replace it with the new branch
 5. Force-push to `myfork`
 

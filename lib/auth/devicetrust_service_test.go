@@ -21,14 +21,17 @@
 // covered upstream.
 //
 // Scope: the device store, its validation, RBAC, enrollment tokens
-// (including auto-enroll) and audit events. The enrollment and authentication
-// ceremonies (enrollMacOS, enrollTPM, authenticateMacOS, authenticateTPM) need
-// real Secure Enclave / TPM attestation and are not exercised here.
+// (including auto-enroll), audit events and the SSH key challenge. The TPM
+// ceremonies run against a software TPM in devicetrust_tpm_simulator_test.go
+// (build tag tpmsimulator). The macOS ceremonies need a Secure Enclave and are
+// not exercised here.
 
 package auth
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"testing"
 	"time"
 
@@ -36,6 +39,7 @@ import (
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/gravitational/teleport/api/constants"
@@ -44,6 +48,7 @@ import (
 	apievents "github.com/gravitational/teleport/api/types/events"
 	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/backend/memory"
+	"github.com/gravitational/teleport/lib/devicetrust/challenge"
 	"github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/events/eventstest"
 	"github.com/gravitational/teleport/lib/services"
@@ -697,4 +702,45 @@ func TestDeviceTrustService_AuditEvents(t *testing.T) {
 		events.DeviceUpdateCode,
 		events.DeviceDeleteCode,
 	}, got)
+}
+
+func TestVerifySSHKeyChallenge(t *testing.T) {
+	t.Parallel()
+
+	_, caPriv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	caSigner, err := ssh.NewSignerFromKey(caPriv)
+	require.NoError(t, err)
+	userPub, userPriv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	sshUserPub, err := ssh.NewPublicKey(userPub)
+	require.NoError(t, err)
+	cert := &ssh.Certificate{Key: sshUserPub, CertType: ssh.UserCert, KeyId: "llama", ValidBefore: ssh.CertTimeInfinity}
+	require.NoError(t, cert.SignCert(rand.Reader, caSigner))
+	authorizedKey := ssh.MarshalAuthorizedKey(cert)
+
+	chal, err := challenge.New()
+	require.NoError(t, err)
+	goodSig := ed25519.Sign(userPriv, chal)
+	_, otherPriv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	verified, err := verifySSHKeyChallenge(authorizedKey, chal, goodSig)
+	require.NoError(t, err)
+	assert.True(t, verified)
+
+	// No signature: not verified, the TLS/SSH key match check applies.
+	verified, err = verifySSHKeyChallenge(authorizedKey, chal, nil)
+	require.NoError(t, err)
+	assert.False(t, verified)
+
+	// Signed by another key, or over another challenge.
+	_, err = verifySSHKeyChallenge(authorizedKey, chal, ed25519.Sign(otherPriv, chal))
+	assert.True(t, trace.IsAccessDenied(err), "got %v", err)
+	_, err = verifySSHKeyChallenge(authorizedKey, []byte("another challenge"), goodSig)
+	assert.True(t, trace.IsAccessDenied(err), "got %v", err)
+
+	// Garbage key.
+	_, err = verifySSHKeyChallenge([]byte("not a key"), chal, goodSig)
+	assert.Error(t, err)
 }

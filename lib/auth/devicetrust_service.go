@@ -19,22 +19,25 @@
 package auth
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
-	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
+	"github.com/google/go-attestation/attest"
 	"github.com/google/uuid"
 	"github.com/gravitational/trace"
 	"github.com/jonboulle/clockwork"
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -43,11 +46,14 @@ import (
 	devicepb "github.com/gravitational/teleport/api/gen/proto/go/teleport/devicetrust/v1"
 	"github.com/gravitational/teleport/api/types"
 	apievents "github.com/gravitational/teleport/api/types/events"
+	apisshutils "github.com/gravitational/teleport/api/utils/sshutils"
 	"github.com/gravitational/teleport/lib/authz"
 	"github.com/gravitational/teleport/lib/backend"
+	"github.com/gravitational/teleport/lib/devicetrust"
 	"github.com/gravitational/teleport/lib/devicetrust/assertserver"
 	"github.com/gravitational/teleport/lib/devicetrust/challenge"
 	"github.com/gravitational/teleport/lib/events"
+	"github.com/gravitational/teleport/lib/tpm"
 )
 
 const (
@@ -641,7 +647,10 @@ func (s *ossDeviceTrustService) EnrollDevice(stream devicepb.DeviceTrustService_
 	case devicepb.OSType_OS_TYPE_MACOS:
 		cred, err = enrollMacOS(stream, initReq)
 	case devicepb.OSType_OS_TYPE_LINUX, devicepb.OSType_OS_TYPE_WINDOWS:
-		cred, err = enrollTPM(stream, initReq)
+		var cas *x509.CertPool
+		if cas, err = s.ekCertAllowedCAs(ctx); err == nil {
+			cred, err = enrollTPM(ctx, stream, initReq, cas)
+		}
 	default:
 		return trace.BadParameter("unsupported OS type: %v", cd.OsType)
 	}
@@ -711,11 +720,12 @@ func (s *ossDeviceTrustService) AuthenticateDevice(stream devicepb.DeviceTrustSe
 	}
 
 	// OS-specific authentication.
+	var sshChal, sshSig []byte
 	switch dev.OsType {
 	case devicepb.OSType_OS_TYPE_MACOS:
-		err = authenticateMacOS(dev, stream)
+		sshChal, sshSig, err = authenticateMacOS(dev, stream)
 	case devicepb.OSType_OS_TYPE_LINUX, devicepb.OSType_OS_TYPE_WINDOWS:
-		err = authenticateTPM(stream)
+		sshChal, sshSig, err = authenticateTPM(dev, stream)
 	default:
 		err = fmt.Errorf("unsupported OS type: %v", dev.OsType)
 	}
@@ -739,11 +749,14 @@ func (s *ossDeviceTrustService) AuthenticateDevice(stream devicepb.DeviceTrustSe
 			CredentialID: dev.Credential.Id,
 		},
 	}
-	if initReq.UserCertificates != nil && len(initReq.UserCertificates.SshAuthorizedKey) > 0 {
-		opts.SSHAuthorizedKey = initReq.UserCertificates.SshAuthorizedKey
-		// The SSH key ownership was proven via the device challenge-response
-		// ceremony (the client signs the challenge with both device key and SSH key).
-		opts.SSHKeySatisfiedChallenge = true
+	if sshKey := initReq.GetUserCertificates().GetSshAuthorizedKey(); len(sshKey) > 0 {
+		opts.SSHAuthorizedKey = sshKey
+		// The client proves SSH key ownership by signing the device challenge
+		// with it. Without a signature the SSH and TLS keys must match.
+		opts.SSHKeySatisfiedChallenge, err = verifySSHKeyChallenge(sshKey, sshChal, sshSig)
+		if err != nil {
+			return trace.Wrap(err)
+		}
 	}
 
 	certs, err := s.authServer.AugmentContextUserCertificates(ctx, authCtx, opts)
@@ -860,7 +873,7 @@ func (c *ossAssertCeremony) AssertDevice(ctx context.Context, stream assertserve
 	case devicepb.OSType_OS_TYPE_MACOS:
 		err = assertAuthenticateMacOS(dev, stream)
 	case devicepb.OSType_OS_TYPE_LINUX, devicepb.OSType_OS_TYPE_WINDOWS:
-		err = assertAuthenticateTPM(stream)
+		err = assertAuthenticateTPM(dev, stream)
 	default:
 		err = fmt.Errorf("unsupported OS type: %v", dev.OsType)
 	}
@@ -929,125 +942,270 @@ func enrollMacOS(stream devicepb.DeviceTrustService_EnrollDeviceServer, initReq 
 	}, nil
 }
 
-func enrollTPM(stream devicepb.DeviceTrustService_EnrollDeviceServer, initReq *devicepb.EnrollDeviceInit) (*devicepb.DeviceCredential, error) {
-	if initReq.Tpm == nil {
-		return nil, trace.BadParameter("TPM data required")
-	}
-
-	secret, err := randomCryptoBytes()
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-	credentialBlob, err := randomCryptoBytes()
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-	expectedSolution := append(secret, credentialBlob...)
-	nonce, err := randomCryptoBytes()
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-
-	if err := stream.Send(&devicepb.EnrollDeviceResponse{
-		Payload: &devicepb.EnrollDeviceResponse_TpmChallenge{
-			TpmChallenge: &devicepb.TPMEnrollChallenge{
-				EncryptedCredential: &devicepb.TPMEncryptedCredential{
-					CredentialBlob: credentialBlob,
-					Secret:         secret,
-				},
-				AttestationNonce: nonce,
-			},
-		},
-	}); err != nil {
-		return nil, trace.Wrap(err)
-	}
-
-	resp, err := stream.Recv()
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-	chalResp := resp.GetTpmChallengeResponse()
+func enrollTPM(
+	ctx context.Context,
+	stream devicepb.DeviceTrustService_EnrollDeviceServer,
+	initReq *devicepb.EnrollDeviceInit,
+	ekCertAllowedCAs *x509.CertPool,
+) (*devicepb.DeviceCredential, error) {
+	payload := initReq.Tpm
 	switch {
-	case chalResp == nil:
-		return nil, trace.BadParameter("challenge response required")
-	case !bytes.Equal(expectedSolution, chalResp.Solution):
-		return nil, trace.BadParameter("invalid TPM challenge solution")
-	case chalResp.PlatformParameters == nil:
-		return nil, trace.BadParameter("missing platform parameters")
-	case !bytes.Equal(nonce, chalResp.PlatformParameters.EventLog):
-		return nil, trace.BadParameter("nonce mismatch in challenge response")
+	case payload == nil:
+		return nil, trace.BadParameter("TPM data required")
+	case payload.AttestationParameters == nil || len(payload.AttestationParameters.Public) == 0:
+		return nil, trace.BadParameter("TPM attestation parameters required")
+	case len(payload.GetEkCert()) == 0 && len(payload.GetEkKey()) == 0:
+		return nil, trace.BadParameter("TPM EK cert or EK key required")
+	}
+	attestParams := devicetrust.AttestationParametersFromProto(payload.AttestationParameters)
+
+	// The credential ID is derived from the AK, so it can't be chosen freely
+	// by the client (eg, to collide with another device's credential).
+	akPub, err := attest.ParseAKPublic(attestParams.Public)
+	if err != nil {
+		return nil, trace.BadParameter("parsing TPM AK: %v", err)
+	}
+	wantCredID, err := tpmCredentialID(akPub)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	if subtle.ConstantTimeCompare([]byte(wantCredID), []byte(initReq.CredentialId)) != 1 {
+		return nil, trace.BadParameter("credential ID does not match the TPM attestation key")
+	}
+
+	nonce, err := challenge.New()
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	// tpm.Validate checks that the AK is a restricted signing key created
+	// inside a TPM, verifies the EKCert against the allowed CAs (if any), and
+	// runs credential activation: only the TPM that holds both the EK and the
+	// AK can decrypt the challenge.
+	// The platform attestation (a quote over the nonce signed by the AK) is
+	// requested in the same round trip.
+	var chalResp *devicepb.TPMEnrollChallengeResponse
+	validated, err := tpm.Validate(ctx, tpm.ValidateParams{
+		EKCert:       payload.GetEkCert(),
+		EKKey:        payload.GetEkKey(),
+		AttestParams: attestParams,
+		AllowedCAs:   ekCertAllowedCAs,
+		Solve: func(ec *attest.EncryptedCredential) ([]byte, error) {
+			if err := stream.Send(&devicepb.EnrollDeviceResponse{
+				Payload: &devicepb.EnrollDeviceResponse_TpmChallenge{
+					TpmChallenge: &devicepb.TPMEnrollChallenge{
+						EncryptedCredential: devicetrust.EncryptedCredentialToProto(ec),
+						AttestationNonce:    nonce,
+					},
+				},
+			}); err != nil {
+				return nil, trace.Wrap(err)
+			}
+			resp, err := stream.Recv()
+			if err != nil {
+				return nil, trace.Wrap(err)
+			}
+			chalResp = resp.GetTpmChallengeResponse()
+			if chalResp == nil {
+				return nil, trace.BadParameter("TPM challenge response required")
+			}
+			return chalResp.Solution, nil
+		},
+	})
+	if err != nil {
+		return nil, trace.AccessDenied("TPM attestation failed: %v", err)
+	}
+
+	if err := verifyTPMPlatformAttestation(akPub, nonce, chalResp.PlatformParameters); err != nil {
+		return nil, trace.Wrap(err)
+	}
+
+	attType := devicepb.DeviceAttestationType_DEVICE_ATTESTATION_TYPE_TPM_EKPUB
+	switch {
+	case validated.EKCertVerified:
+		attType = devicepb.DeviceAttestationType_DEVICE_ATTESTATION_TYPE_TPM_EKCERT_TRUSTED
+	case validated.EKCertSerial != "":
+		attType = devicepb.DeviceAttestationType_DEVICE_ATTESTATION_TYPE_TPM_EKCERT
 	}
 
 	return &devicepb.DeviceCredential{
 		Id:                    initReq.CredentialId,
-		DeviceAttestationType: devicepb.DeviceAttestationType_DEVICE_ATTESTATION_TYPE_TPM_EKPUB,
+		DeviceAttestationType: attType,
+		TpmEkcertSerial:       validated.EKCertSerial,
+		TpmAkPublic:           attestParams.Public,
 	}, nil
+}
+
+// tpmCredentialID derives the credential ID from the AK public key, the same
+// way the client does (see lib/devicetrust/native credentialIDFromAK).
+func tpmCredentialID(akPub *attest.AKPublic) (string, error) {
+	rsaPub, ok := akPub.Public.(*rsa.PublicKey)
+	if !ok {
+		return "", trace.BadParameter("unsupported TPM AK type: %T", akPub.Public)
+	}
+	h := sha256.New()
+	h.Write(big.NewInt(int64(rsaPub.E)).Bytes())
+	h.Write(rsaPub.N.Bytes())
+	return base64.RawStdEncoding.EncodeToString(h.Sum(nil)), nil
+}
+
+// verifyTPMPlatformAttestation verifies that the quotes in params were signed
+// by the AK, include the nonce (freshness) and cover every reported PCR.
+func verifyTPMPlatformAttestation(akPub *attest.AKPublic, nonce []byte, params *devicepb.TPMPlatformParameters) error {
+	if params == nil {
+		return trace.BadParameter("TPM platform parameters required")
+	}
+	pp := devicetrust.PlatformParametersFromProto(params)
+	if err := akPub.VerifyAll(pp.Quotes, pp.PCRs, nonce); err != nil {
+		return trace.AccessDenied("TPM platform attestation failed: %v", err)
+	}
+	return nil
+}
+
+// ekCertAllowedCAs returns the cluster's device_trust.ekcert_allowed_cas as a
+// pool, or nil if none are configured (EKCerts are then not checked).
+func (s *ossDeviceTrustService) ekCertAllowedCAs(ctx context.Context) (*x509.CertPool, error) {
+	if s.getAuthPreference == nil {
+		return nil, nil
+	}
+	pref, err := s.getAuthPreference(ctx)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	dt := pref.GetDeviceTrust()
+	if dt == nil || len(dt.EKCertAllowedCAs) == 0 {
+		return nil, nil
+	}
+	pool := x509.NewCertPool()
+	for _, ca := range dt.EKCertAllowedCAs {
+		if !pool.AppendCertsFromPEM([]byte(ca)) {
+			return nil, trace.BadParameter("invalid PEM in device_trust.ekcert_allowed_cas")
+		}
+	}
+	return pool, nil
 }
 
 // --- Authentication helpers ---
 
-func authenticateMacOS(dev *devicepb.Device, stream devicepb.DeviceTrustService_AuthenticateDeviceServer) error {
+// authenticateMacOS runs the Secure Enclave challenge. It returns the
+// challenge and the client's SSH key signature over it (may be empty), so the
+// caller can verify SSH key possession.
+func authenticateMacOS(dev *devicepb.Device, stream devicepb.DeviceTrustService_AuthenticateDeviceServer) (chal, sshSig []byte, err error) {
 	if dev.Credential == nil || len(dev.Credential.PublicKeyDer) == 0 {
-		return trace.BadParameter("device missing public key credential")
+		return nil, nil, trace.BadParameter("device missing public key credential")
 	}
 	pubKey, err := x509.ParsePKIXPublicKey(dev.Credential.PublicKeyDer)
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 
-	chal, err := challenge.New()
+	chal, err = challenge.New()
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 	if err := stream.Send(&devicepb.AuthenticateDeviceResponse{
 		Payload: &devicepb.AuthenticateDeviceResponse_Challenge{
 			Challenge: &devicepb.AuthenticateDeviceChallenge{Challenge: chal},
 		},
 	}); err != nil {
-		return trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 
 	req, err := stream.Recv()
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
 	chalResp := req.GetChallengeResponse()
 	switch {
 	case chalResp == nil:
-		return trace.BadParameter("challenge response required")
+		return nil, nil, trace.BadParameter("challenge response required")
 	case len(chalResp.Signature) == 0:
-		return trace.BadParameter("signature required")
+		return nil, nil, trace.BadParameter("signature required")
 	}
-	return trace.Wrap(challenge.Verify(chal, chalResp.Signature, pubKey))
+	if err := challenge.Verify(chal, chalResp.Signature, pubKey); err != nil {
+		return nil, nil, trace.Wrap(err)
+	}
+	return chal, chalResp.SshSignature, nil
 }
 
-func authenticateTPM(stream devicepb.DeviceTrustService_AuthenticateDeviceServer) error {
-	nonce, err := randomCryptoBytes()
-	if err != nil {
-		return trace.Wrap(err)
-	}
-	if err := stream.Send(&devicepb.AuthenticateDeviceResponse{
-		Payload: &devicepb.AuthenticateDeviceResponse_TpmChallenge{
-			TpmChallenge: &devicepb.TPMAuthenticateDeviceChallenge{AttestationNonce: nonce},
+// authenticateTPM asks the device for a platform attestation over a fresh
+// nonce and verifies it with the AK recorded at enrollment. It returns the
+// nonce and the client's SSH key signature over it (may be empty).
+func authenticateTPM(dev *devicepb.Device, stream devicepb.DeviceTrustService_AuthenticateDeviceServer) (nonce, sshSig []byte, err error) {
+	chalResp, nonce, err := tpmAuthnChallenge(dev,
+		func(chal *devicepb.TPMAuthenticateDeviceChallenge) error {
+			return stream.Send(&devicepb.AuthenticateDeviceResponse{
+				Payload: &devicepb.AuthenticateDeviceResponse_TpmChallenge{TpmChallenge: chal},
+			})
 		},
-	}); err != nil {
-		return trace.Wrap(err)
+		func() (*devicepb.TPMAuthenticateDeviceChallengeResponse, error) {
+			req, err := stream.Recv()
+			if err != nil {
+				return nil, err
+			}
+			return req.GetTpmChallengeResponse(), nil
+		})
+	if err != nil {
+		return nil, nil, trace.Wrap(err)
+	}
+	return nonce, chalResp.SshSignature, nil
+}
+
+func tpmAuthnChallenge(
+	dev *devicepb.Device,
+	send func(*devicepb.TPMAuthenticateDeviceChallenge) error,
+	recv func() (*devicepb.TPMAuthenticateDeviceChallengeResponse, error),
+) (*devicepb.TPMAuthenticateDeviceChallengeResponse, []byte, error) {
+	// Devices enrolled before TPM attestation was implemented have no AK on
+	// record and must be re-enrolled.
+	if dev.Credential == nil || len(dev.Credential.TpmAkPublic) == 0 {
+		return nil, nil, trace.AccessDenied("device has no TPM attestation key on record, re-enroll the device")
+	}
+	akPub, err := attest.ParseAKPublic(dev.Credential.TpmAkPublic)
+	if err != nil {
+		return nil, nil, trace.Wrap(err, "parsing stored TPM AK")
 	}
 
-	resp, err := stream.Recv()
+	nonce, err := challenge.New()
 	if err != nil {
-		return trace.Wrap(err)
+		return nil, nil, trace.Wrap(err)
 	}
-	chalResp := resp.GetTpmChallengeResponse()
-	switch {
-	case chalResp == nil:
-		return trace.BadParameter("challenge response required")
-	case chalResp.PlatformParameters == nil:
-		return trace.BadParameter("missing platform parameters")
-	case !bytes.Equal(nonce, chalResp.PlatformParameters.EventLog):
-		return trace.BadParameter("nonce mismatch")
+	if err := send(&devicepb.TPMAuthenticateDeviceChallenge{AttestationNonce: nonce}); err != nil {
+		return nil, nil, trace.Wrap(err)
 	}
-	return nil
+	chalResp, err := recv()
+	if err != nil {
+		return nil, nil, trace.Wrap(err)
+	}
+	if chalResp == nil {
+		return nil, nil, trace.BadParameter("TPM challenge response required")
+	}
+	if err := verifyTPMPlatformAttestation(akPub, nonce, chalResp.PlatformParameters); err != nil {
+		return nil, nil, trace.Wrap(err)
+	}
+	return chalResp, nonce, nil
+}
+
+// verifySSHKeyChallenge verifies that sig is a signature over chal by the key
+// of the SSH certificate sshAuthorizedKey. It returns false, without error,
+// if the client didn't sign: the certificate key must then match the TLS
+// certificate key, which AugmentContextUserCertificates enforces.
+func verifySSHKeyChallenge(sshAuthorizedKey, chal, sig []byte) (bool, error) {
+	if len(sshAuthorizedKey) == 0 || len(sig) == 0 {
+		return false, nil
+	}
+	sshCert, err := apisshutils.ParseCertificate(sshAuthorizedKey)
+	if err != nil {
+		return false, trace.Wrap(err)
+	}
+	cryptoPub, ok := sshCert.Key.(ssh.CryptoPublicKey)
+	if !ok {
+		return false, trace.BadParameter("unsupported SSH key type: %T", sshCert.Key)
+	}
+	if err := challenge.Verify(chal, sig, cryptoPub.CryptoPublicKey()); err != nil {
+		return false, trace.AccessDenied("SSH key challenge verification failed")
+	}
+	return true, nil
 }
 
 // Assert-stream variants for the assertion ceremony (uses different proto types).
@@ -1087,33 +1245,21 @@ func assertAuthenticateMacOS(dev *devicepb.Device, stream assertserver.AssertDev
 	return trace.Wrap(challenge.Verify(chal, chalResp.Signature, pubKey))
 }
 
-func assertAuthenticateTPM(stream assertserver.AssertDeviceServerStream) error {
-	nonce, err := randomCryptoBytes()
-	if err != nil {
-		return trace.Wrap(err)
-	}
-	if err := stream.Send(&devicepb.AssertDeviceResponse{
-		Payload: &devicepb.AssertDeviceResponse_TpmChallenge{
-			TpmChallenge: &devicepb.TPMAuthenticateDeviceChallenge{AttestationNonce: nonce},
+func assertAuthenticateTPM(dev *devicepb.Device, stream assertserver.AssertDeviceServerStream) error {
+	_, _, err := tpmAuthnChallenge(dev,
+		func(chal *devicepb.TPMAuthenticateDeviceChallenge) error {
+			return stream.Send(&devicepb.AssertDeviceResponse{
+				Payload: &devicepb.AssertDeviceResponse_TpmChallenge{TpmChallenge: chal},
+			})
 		},
-	}); err != nil {
-		return trace.Wrap(err)
-	}
-
-	resp, err := stream.Recv()
-	if err != nil {
-		return trace.Wrap(err)
-	}
-	chalResp := resp.GetTpmChallengeResponse()
-	switch {
-	case chalResp == nil:
-		return trace.BadParameter("challenge response required")
-	case chalResp.PlatformParameters == nil:
-		return trace.BadParameter("missing platform parameters")
-	case !bytes.Equal(nonce, chalResp.PlatformParameters.EventLog):
-		return trace.BadParameter("nonce mismatch")
-	}
-	return nil
+		func() (*devicepb.TPMAuthenticateDeviceChallengeResponse, error) {
+			req, err := stream.Recv()
+			if err != nil {
+				return nil, err
+			}
+			return req.GetTpmChallengeResponse(), nil
+		})
+	return trace.Wrap(err)
 }
 
 // --- Backend search helpers ---
@@ -1182,12 +1328,6 @@ func validateDeviceData(cd *devicepb.DeviceCollectedData) error {
 		return trace.BadParameter("device serial number required")
 	}
 	return nil
-}
-
-func randomCryptoBytes() ([]byte, error) {
-	buf := make([]byte, 32)
-	_, err := rand.Read(buf)
-	return buf, err
 }
 
 func cloneDevice(dev *devicepb.Device) *devicepb.Device {

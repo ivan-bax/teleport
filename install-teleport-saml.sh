@@ -80,8 +80,15 @@ fi
 info "Version: $VERSION"
 
 # --- Check current version ---
+# The installed release is recorded in RELEASE_FILE because fork revisions
+# (v18.11.1-r1) report the same `teleport version` as the base release.
+RELEASE_FILE="$DATA_DIR/.saml-oss-release"
 if command -v teleport &>/dev/null; then
-    CURRENT=$(teleport version 2>/dev/null | grep -oP 'v\d+\.\d+\.\d+' | head -1 || echo "unknown")
+    if [[ -f "$RELEASE_FILE" ]]; then
+        CURRENT=$(cat "$RELEASE_FILE")
+    else
+        CURRENT=$(teleport version 2>/dev/null | grep -oP 'v\d+\.\d+\.\d+' | head -1 || echo "unknown")
+    fi
     info "Current version: $CURRENT"
     if [[ "$CURRENT" == "$VERSION" ]]; then
         info "Already at $VERSION. Use --version to force a specific version."
@@ -139,6 +146,7 @@ done
 
 # --- Create directories ---
 mkdir -p "$CONFIG_DIR" "$DATA_DIR"
+echo "$VERSION" > "$RELEASE_FILE"
 
 # --- Create systemd service ---
 if [[ ! -f /etc/systemd/system/teleport.service ]]; then

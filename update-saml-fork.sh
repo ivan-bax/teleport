@@ -108,6 +108,11 @@ CUSTOM_COMMITS=(
     "8db7a1e6afe"  # chore: update CUSTOM_COMMITS for v18.11.1 rebase
     "a99579aa791"  # fix: install clang and llvm for the v18.11 ironrdp WASM build
     "856c1818808"  # fix: pick requestable roles in the web UI and refresh monitoring rules
+
+    # Device trust hardening
+    "d2c1eb1ab97"  # fix: device trust auto-enroll, RBAC, durable tokens and audit events
+    "753c8272747"  # fix: verify TPM attestation and SSH key possession in device trust
+    "b2154b1a59c"  # ci: publish fork-only changes as -rN releases
 )
 
 RED='\033[0;31m'

@@ -134,6 +134,15 @@ The push to `feature/saml-oss` triggers the GitHub Actions workflow, which:
 5. Creates a tarball + checksums
 6. Publishes a GitHub Release at tag `saml-oss-v<version>`
 
+Fork-only changes on the same upstream version (fixes merged into
+`feature/saml-oss` without a rebase) don't overwrite that release: the workflow
+publishes them as `saml-oss-v<version>-r1`, `-r2`, ... (Docker tag
+`<version>-r1`). The Teleport binaries still report `v<version>`; the installer
+records the installed release in `/var/lib/teleport/.saml-oss-release`.
+
+Merge PRs into `feature/saml-oss` with a merge commit (not squash or rebase),
+so the SHAs listed in `CUSTOM_COMMITS` stay the ones on the branch.
+
 ### 3. End users install or upgrade
 
 ```bash

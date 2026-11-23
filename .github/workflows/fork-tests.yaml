@@ -144,6 +144,14 @@ jobs:
             ./lib/web \
             ./lib/web/ui
 
+      # Device trust TPM enrollment/authentication against a software TPM
+      # (go-tpm-tools simulator, needs cgo and the openssl headers).
+      - name: Test device trust TPM attestation (simulator)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libssl-dev
+          go test -timeout 10m -tags tpmsimulator \
+            -run 'TestDeviceTrustService_TPM' ./lib/auth
+
   web:
     name: Web (type-check, lint, jest)
     runs-on: ubuntu-latest
